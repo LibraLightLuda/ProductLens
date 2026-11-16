@@ -128,3 +128,16 @@ PUBLICATION.json은 공개 이후 검증 기록입니다. 공개 APK와 소스 Z
 - 사진 원본/크롭/픽셀 파일은 저장소·소스 ZIP·릴리스 자산에 넣지 않음. LocalBarcodePhotoTest는 PRODUCTLENS_BARCODE_PHOTO가 설정된 로컬에서만 수행. 미설정 환경은 해당 테스트를 건너뜀.
 
 실기기 미검증: AF/AE 모터·렌즈 최소 초점 거리·반사·실시간 발열·확대 후 인식률·가로/세로 화면의 실제 표시. 이 PC에는 연결된 Android 기기가 없음. 프레임 확인 규칙과 좌표/디코딩 검증을 실제 스마트폰 성공률로 표현하지 않음.
+
+### 1.1.2 공개 배포 후 확인
+
+공개 릴리스: https://github.com/LibraLightLuda/ProductLens/releases/tag/v1.1.2
+
+- 전체 JVM 테스트 34개 통과, 실패 0, 건너뜀 0. BarcodeFocusTest 9개와 실제 CameraFrames 좌표 테스트 포함.
+- 공개 전 33개 통과와 별도 공개 다운로드 1개를 구분했으며, 공개 후 앱과 동일한 업데이트 코드로 1.1.2 APK 전체 69,779,640바이트를 인증 없이 내려받아 SHA-256을 검증.
+- APK·소스 ZIP·SHA256SUMS의 공개 자산 digest가 로컬 파일과 일치. app.productlens/versionCode 4/versionName 1.1.2/ARM64 확인.
+- apksigner로 검증한 기존 1.1.1과 동일한 인증서. Lint 오류 0, 경고 32.
+- 소스 ZIP 안의 이미지가 기존 공식 테스트용 burger.jpg/cat.jpg 2개뿐인지 검사. 사용자 사진·로컬 픽셀 입력은 포함하지 않았으며 로컬 임시 픽셀 파일을 정리.
+- 실제 스마트폰 AF/AE·확대·반사·확정 시간·발열·배터리·인식률은 검증하지 못함. 압축 스크린샷에서 정상 번호를 복원했다는 주장은 하지 않음.
+
+공개 이후의 검증 기록만 main에 추가하며 공개 APK·소스 ZIP·릴리스 태그의 앱 코드를 교체하지 않았습니다.
