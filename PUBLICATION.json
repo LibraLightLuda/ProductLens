@@ -1,47 +1,57 @@
 {
   "repository": "https://github.com/LibraLightLuda/ProductLens",
   "visibility": "PUBLIC",
-  "version": "1.1.2",
-  "versionCode": 4,
-  "release": "https://github.com/LibraLightLuda/ProductLens/releases/tag/v1.1.2",
+  "version": "1.1.3",
+  "versionCode": 5,
+  "release": "https://github.com/LibraLightLuda/ProductLens/releases/tag/v1.1.3",
   "artifacts": [
     {
-      "name": "ProductLens-1.1.2-debug.apk",
-      "bytes": 69779640,
-      "sha256": "0312af9bfffdbed69c6891bde45e3ad7e591a92e6ac164927631350122c83ec8",
-      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.2/ProductLens-1.1.2-debug.apk"
+      "name": "ProductLens-1.1.3-debug.apk",
+      "bytes": 69839866,
+      "sha256": "c7c3c5afe0910d7b68bd63e27acc5c197bb0e58b2dc02817ee3a6b2265ecc58f",
+      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.3/ProductLens-1.1.3-debug.apk"
     },
     {
-      "name": "ProductLens-1.1.2-source.zip",
-      "bytes": 16592538,
-      "sha256": "565ee4088f2a6e97a76cdcce834265276519ab4d6186eddbe9474adbb56a658d",
-      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.2/ProductLens-1.1.2-source.zip"
+      "name": "ProductLens-1.1.3-source.zip",
+      "bytes": 16626432,
+      "sha256": "4371d9c01d2f3caef2436f6913e56e436ef4ec2479c98b56c4dc67779351a83f",
+      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.3/ProductLens-1.1.3-source.zip"
     },
     {
       "name": "SHA256SUMS.txt",
       "bytes": 292,
-      "sha256": "6e87b8a67dfa677d8ab2e00bf0a861ba33cb240423d164055096eb01a033b39e",
-      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.2/SHA256SUMS.txt"
+      "sha256": "0b736699ef189c5efff19c6e2e1de19e54460dde120bf1cd2fff69d78b5c15ec",
+      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.3/SHA256SUMS.txt"
     }
   ],
-  "tests_passed": 34,
+  "tests_passed": 45,
   "tests_failed": 0,
-  "tests_skipped": 0,
+  "tests_skipped": 1,
   "lint_errors": 0,
-  "lint_warnings": 32,
+  "lint_warnings": 36,
   "barcode_regression": {
     "single_row_false_ean8_before": "REPRODUCED",
     "focused_valid_ean13_after": "PASS",
     "guide_exclusion": "PASS",
-    "spatial_temporal_confirmation": "PASS - 3 frames",
+    "spatial_temporal_confirmation": "PASS - 2 clear frames or 3 weaker frames, brief misses and small motion tolerated",
     "camera_plane_crop_stride_rotation": "PASS",
-    "scan_tests": 9,
+    "scan_tests": 11,
     "provided_screenshot": "Compressed bars not decodable; wrong EAN8 rejected. No successful recovery claim.",
     "user_photo_in_release": false
   },
-  "live_public_apk_download": "PASS - app ReleaseUpdate code, no GitHub credentials",
+  "live_public_apk_download": "PASS - actual app ReleaseUpdate downloader verified public v1.1.3 APK bytes and SHA-256 without credentials",
   "signatures_verified": true,
   "signing_certificate_sha256": "53d3a031547f6384a3efa67dbfbb0a0d4f640d8e5541c328f0fce76e8e0e37d9",
-  "release_commit": "8374dbc5a9c7120eeb306622687866bebc96fe65",
-  "android_installation": "NOT RUN - no connected ARM64 device; physical AF/AE, camera alignment and accuracy require phone verification"
+  "release_commit": "186e5c416e505dcf0f3210edc26b203808b733e8",
+  "android_installation": "NOT RUN - no connected device; real phone focus, motion tolerance, speed, installation/update require device verification",
+  "product_lookup": {
+    "target_barcode": "8801097136618",
+    "open_facts_actual": "HTTP 404 product_not_found",
+    "upcitemdb_actual": "HTTP 200 code OK, total 0, items []",
+    "open_facts_control": "3017620422003: HTTP 200 Nutella",
+    "diagnosis": "Target is missing in both queried databases. Valid check digit does not guarantee registration.",
+    "fallback_cache_rate_errors_and_db_migration": "PASS - production adapters with local HTTP and Robolectric SQLite",
+    "local_names_offline": "PASS",
+    "raw_upc_api_responses_in_source_archive": false
+  }
 }

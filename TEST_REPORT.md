@@ -161,3 +161,9 @@ PUBLICATION.json은 공개 이후 검증 기록입니다. 공개 APK와 소스 Z
 Gradle `assembleDebug`, `testDebugUnitTest`, `assembleDebugAndroidTest`, `lintDebug`를 직접 실행했습니다. 전체 46개 중 44개 통과, 2개 선택 테스트 생략, 실패 0개인 초기 검증을 확인했습니다. 배포 후 실제 GitHub 다운로드 테스트의 최종 결과는 아래 추가합니다. lint 오류 0개·경고 36개입니다. 기존 의존성/신규 API/표기 관련 경고이며 실제 기기 검증을 대체하지 않습니다.
 
 ADB 연결 기기 0대. ARM64 기기에서 카메라 속도·손 움직임 체감·자동초점과 설치/업데이트 화면은 이번 작업에서 실행하지 못했습니다. Android 테스트 APK 생성은 기기 테스트 실행과 구분합니다. 사용자 제공 사진은 APK·소스 ZIP·Git에 포함하지 않았습니다.
+
+### 1.1.3 공개 배포 후 검증
+
+정식 v1.1.3 공개 이후 앱의 실제 ReleaseUpdate downloader로 GitHub 최신 릴리스 APK 전체를 무인증 다운로드하고 크기·SHA-256 일치를 확인했습니다. 전체 JVM 46개 중 **45개 통과, 1개 선택 사진 입력 테스트 생략, 실패 0개**입니다. 생략 항목은 사용자 사진 경로 환경변수가 없는 LocalBarcodePhotoTest이며, BarcodeFocusTest의 11개 생성 바코드/위치/시간/회전 테스트는 모두 실행했습니다.
+
+GitHub에 업로드된 APK·소스 ZIP·SHA256SUMS 세 자산의 서버 digest·크기를 각각 로컬 파일과 대조했습니다. APK 패키지 app.productlens, versionName 1.1.3, versionCode 5, 이전 릴리스와 같은 인증서 SHA-256 `53d3a031547f6384a3efa67dbfbb0a0d4f640d8e5541c328f0fce76e8e0e37d9`를 확인했습니다. 소스 ZIP에는 사용자 사진·키 파일·원본 UPCitemdb 응답을 넣지 않았습니다. 공개 배포 기록: PUBLICATION.json.
