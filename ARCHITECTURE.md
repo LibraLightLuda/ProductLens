@@ -44,3 +44,11 @@ ReleaseUpdate는 공개 GitHub releases/latest를 토큰 없이 읽고, draft/pr
 시작 확인은 ViewModel 생성 시 한 번이며 화면 회전에는 반복하지 않습니다. shouldNotifyUpdate가 설치 버전/최신 버전/영속 lastNotified 버전을 비교합니다. 실제 시작 알림을 그릴 때 버전을 기록하므로 같은 버전은 재실행에도 다시 알리지 않습니다. 수동 확인은 이 기록과 무관하게 가능합니다. 같은 알림도 앱 데이터 삭제 후에는 다시 나올 수 있습니다.
 
 다운로드 파일은 cache/updates의 임시 파일에 스트리밍하고 해시·크기를 검증한 뒤 정식 파일명으로 옮깁니다. 설치 요청 전에 디스크 파일을 다시 해시 검사하며 Android PackageManager로 패키지명·정확한 versionName·상승한 versionCode·설치 앱과 같은 서명을 확인합니다. FileProvider는 이 폴더만 공유하며 외부 공개되지 않습니다. REQUEST_INSTALL_PACKAGES 권한과 출처 허용 뒤 사용자 확인이 필요한 Android 설치 화면을 엽니다. 무인 설치는 없습니다. 인식 기록·카탈로그 DB는 변경하지 않습니다.
+
+## 1.1.1 사진의 소유권 수정
+
+MediaPipe 0.10.26의 BitmapImageBuilder는 원본을 복사하지 않고 BitmapImageContainer에 넣습니다. MPImage.close()가 이 컨테이너를 닫으면 bitmap.recycle()이 호출됩니다. 기존 객체 검출은 이후 크롭/OCR에 필요한 원본을, 임베딩은 이후 저장에 필요한 크롭을 해제하는 결함이 있었습니다.
+
+Vision.kt의 Bitmap.toMpImageCopy()가 추론 전용 ARGB_8888 복사본을 만들고 두 추론 경로가 함께 사용합니다. finally의 image.close()는 유지해 복사본을 해제하고 호출자가 가진 원본은 보존합니다. 전체 크롭이 원본과 같은 Bitmap을 반환하는 경우도 안전하게 처리합니다. 모델·카메라·DB·네트워크 동작은 바꾸지 않았습니다.
+
+SDK 근거: https://github.com/google-ai-edge/mediapipe/blob/v0.10.26/mediapipe/java/com/google/mediapipe/framework/image/BitmapImageContainer.java

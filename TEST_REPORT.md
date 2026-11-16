@@ -81,3 +81,20 @@ v1.0.0 저장소와 정식 릴리스를 먼저 공개한 뒤 실제 GitHub 릴�
 - Lint 오류 0, 경고 32개이며 APK·소스 ZIP·SHA256SUMS의 GitHub 자산 digest가 모두 로컬 파일과 같습니다.
 
 PUBLICATION.json은 공개 이후 검증 기록입니다. 공개 APK와 소스 ZIP을 교체하지 않았습니다. GitHub main의 이 문서와 기록은 릴리스 공개 후 추가한 근거이며, 태그의 앱 코드는 변경하지 않았습니다. 실제 ARM64 Android 설치·설치 출처 권한·앱 교체·영속 알림 상태 검증은 여전히 미수행입니다.
+
+## 1.1.1 이미지 분석 오류 재현 및 수정
+
+사용자 실기기 오류: `cannot use a recycled source in createBitmap`.
+
+원인: MediaPipe 0.10.26의 MPImage.close()가 BitmapImageBuilder에 전달한 비트맵을 recycle합니다. 객체 검출 뒤 원본을 크롭하거나, 임베딩 뒤 크롭을 저장하는 처리에서 이미 해제된 비트맵을 사용했습니다. SDK 구현과 호출 순서를 확인했습니다.
+
+실행 검증:
+
+- 수정 전 동일 SDK/비트맵 수명을 실행한 BitmapOwnershipTest: 4개 중 원본 보존 검사 3개 실패. 원본을 직접 전달하면 close가 recycle한다는 동작 재현 1개 통과. evidence/bitmap-regression-before.xml 및 bitmap-regression-before.log에 기록.
+- 수정 후 같은 테스트: 4개 모두 통과. 원본 보존, 추론용 복사본 해제, 전체/부분 크롭의 후속 저장·재크롭, 추론 실패 시 finally 정리를 확인.
+- 실행 환경: Robolectric 4.16.1, Android API 28, LEGACY 비트맵, 실제 MediaPipe 0.10.26 Java 이미지 클래스. 모델 추론·카메라를 가짜로 실행한 테스트가 아님. 해당 기능의 ARM 네이티브 실행은 하지 않음.
+- 일반 JVM 테스트 21개 통과, 실패 0개. GitHub 최신 APK 다운로드 1개는 1.1.1 공개 후 별도 실행 대상으로 구분.
+- 앱 및 Android 실행 테스트 APK 빌드 성공, Lint 오류 0개. Android DeviceTest에도 검출·임베딩 이후 원본 보존 검사를 추가하고 컴파일 확인.
+- 기기: adb 연결된 ARM64 스마트폰 없음. 사용자의 스마트폰에서 수정 APK로 실제 촬영·한글 OCR·결과 화면까지 재확인한 것은 아님. 초기 에뮬레이터 실행 거부를 재시도하거나 우회하지 않음.
+
+수정 범위는 Vision의 추론 입력 소유권, 회귀 테스트 및 버전/배포 문서입니다. 이미지 인식을 끄거나 오류를 숨기는 처리를 추가하지 않았습니다. SDK 원본: https://github.com/google-ai-edge/mediapipe/blob/v0.10.26/mediapipe/java/com/google/mediapipe/framework/image/BitmapImageContainer.java

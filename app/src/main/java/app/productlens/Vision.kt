@@ -7,24 +7,26 @@ import android.graphics.Matrix
 import android.graphics.RectF
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
-import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.framework.image.MPImage
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.imageembedder.ImageEmbedder
 import com.google.mediapipe.tasks.vision.objectdetector.ObjectDetector
 import com.google.zxing.*
 import com.google.zxing.common.HybridBinarizer
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
 import java.io.Closeable
 import java.io.File
 import java.util.UUID
 
 data class Region(val box: RectF, val label: String)
+// MPImage.close() recycles its bitmap; UI, OCR and saving still need the caller's source.
+internal fun Bitmap.toMpImageCopy(): MPImage =
+    BitmapImageBuilder(checkNotNull(copy(Bitmap.Config.ARGB_8888, false)) { "추론용 사진을 복사하지 못했습니다." }).build()
+
 class Vision(private val context: Context) : Closeable {
     private val ocr = TextRecognition.getClient(KoreanTextRecognizerOptions.Builder().build())
     private var embedder: ImageEmbedder? = null
@@ -32,7 +34,7 @@ class Vision(private val context: Context) : Closeable {
     @Synchronized fun regions(bitmap: Bitmap): List<Region> {
         val det = detector ?: ObjectDetector.createFromOptions(context, ObjectDetector.ObjectDetectorOptions.builder()
             .setBaseOptions(BaseOptions.builder().setModelAssetPath("efficientdet_lite0.tflite").build()).setScoreThreshold(0.35f).setMaxResults(5).build()).also { detector = it }
-        val image = BitmapImageBuilder(bitmap).build()
+        val image = bitmap.toMpImageCopy()
         return try { det.detect(image).detections().map { d ->
             val b = d.boundingBox()
             val cat = d.categories().maxByOrNull { it.score() }
@@ -43,7 +45,7 @@ class Vision(private val context: Context) : Closeable {
     @Synchronized fun embedding(bitmap: Bitmap): FloatArray {
         val model = embedder ?: ImageEmbedder.createFromOptions(context, ImageEmbedder.ImageEmbedderOptions.builder()
             .setBaseOptions(BaseOptions.builder().setModelAssetPath("mobilenet_v3_small.tflite").build()).setL2Normalize(true).build()).also { embedder = it }
-        val image = BitmapImageBuilder(bitmap).build()
+        val image = bitmap.toMpImageCopy()
         return try { model.embed(image).embeddingResult().embeddings().first().floatEmbedding().clone() } finally { image.close() }
     }
     suspend fun text(bitmap: Bitmap): String = ocr.process(InputImage.fromBitmap(bitmap, 0)).await().text

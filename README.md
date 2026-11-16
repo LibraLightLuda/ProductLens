@@ -4,7 +4,7 @@
 
 ## 설치와 사용
 
-1. [GitHub 최신 릴리스](https://github.com/LibraLightLuda/ProductLens/releases/latest)의 `ProductLens-1.1.0-debug.apk` 또는 로컬 `dist`의 같은 APK를 스마트폰으로 복사하여 설치합니다. 개인 설치용 디버그 서명입니다.
+1. [GitHub 최신 릴리스](https://github.com/LibraLightLuda/ProductLens/releases/latest)의 `ProductLens-1.1.1-debug.apk` 또는 로컬 `dist`의 같은 APK를 스마트폰으로 복사하여 설치합니다. 개인 설치용 디버그 서명입니다. 1.1.1은 사진 분석 중 원본 비트맵이 해제되는 오류를 수정한 버전입니다.
 2. Android 8.0 이상, **ARM64 스마트폰** 대상입니다. 선택한 MediaPipe 배포본에 ARM64 네이티브 라이브러리만 들어 있어 설치 ABI를 ARM64로 제한했습니다. x86 에뮬레이터·32비트 전용 기기는 이 APK의 대상이 아닙니다. 바코드/OCR/이미지 모델이 APK에 포함되어 첫 실행에도 모델 다운로드가 필요하지 않습니다.
 3. **카메라로 제품 인식** 또는 **바코드 스캔**을 누르고 카메라 권한을 허용합니다. 바코드는 자동 인식하며, 일반 제품은 **사진으로 인식**을 누릅니다.
 4. 갤러리는 시스템 Photo Picker로 선택합니다. 제품 영역을 드래그하거나 자동 검출 영역을 선택하고 **이 영역으로 제품 찾기**를 누릅니다.

@@ -60,14 +60,16 @@ class DeviceTest {
         val vision = Vision(context)
         val store = LensStore(context, "test-${UUID.randomUUID()}.db")
         try {
+            val regions = vision.regions(a)
+            assertFalse("Detection must preserve the original photo", a.isRecycled)
             val va = vision.embedding(a); val vb = vision.embedding(b); val vq = vision.embedding(query)
+            assertFalse("Embedding must preserve photos for OCR and saving", a.isRecycled || b.isRecycled || query.isRecycled)
             assertTrue(va.size >= 128); assertTrue(va.all { it.isFinite() })
             store.register(Product("테스트 버거 사진"), va); store.register(Product("테스트 고양이 사진"), vb)
             val rank = Fusion.rank(store.catalog(), vq, null, "")
             assertEquals("테스트 버거 사진", rank.first().item.product.name)
             assertTrue(rank.first().cosine!! > rank.last().cosine!!)
             android.util.Log.i("LensTest", "Embedding dim=${va.size}, ranking=${rank.map { it.item.product.name to it.cosine }}")
-            val regions = vision.regions(a)
             assertTrue(regions.all { it.box.left >= 0 && it.box.right <= 1 && it.box.width() > 0 })
             android.util.Log.i("LensTest", "Detected=${regions.map { it.label }}")
         } finally { vision.close(); val name = store.databaseName; store.close(); context.deleteDatabase(name) }

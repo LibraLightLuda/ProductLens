@@ -65,3 +65,7 @@ DB: ODbL 1.0, 개별 내용: DbCL, 상품 사진: CC BY-SA 3.0. 결과마다 출
 GitHub 공식 정식 릴리스 API: https://docs.github.com/en/rest/releases/releases#get-the-latest-release
 자산 digest/size: https://docs.github.com/en/rest/releases/assets
 Android 출처별 설치 권한: https://developer.android.com/reference/android/content/pm/PackageManager#canRequestPackageInstalls()
+
+## 1.1.1 비트맵 회귀 테스트
+
+테스트 전용 Robolectric 4.16.1 (MIT, https://github.com/robolectric/robolectric)을 추가했습니다. PC JVM 안에서 Android API 28 비트맵과 앱이 사용하는 MediaPipe 0.10.26의 실제 Java 이미지 래퍼를 실행합니다. LEGACY 그래픽 모드를 사용하며 추론 모델·CameraX의 ARM 네이티브 실행을 대신하지 않습니다. 추가 런타임 의존성이나 모델 변경은 없습니다.
