@@ -52,3 +52,13 @@ MediaPipe 0.10.26의 BitmapImageBuilder는 원본을 복사하지 않고 BitmapI
 Vision.kt의 Bitmap.toMpImageCopy()가 추론 전용 ARGB_8888 복사본을 만들고 두 추론 경로가 함께 사용합니다. finally의 image.close()는 유지해 복사본을 해제하고 호출자가 가진 원본은 보존합니다. 전체 크롭이 원본과 같은 Bitmap을 반환하는 경우도 안전하게 처리합니다. 모델·카메라·DB·네트워크 동작은 바꾸지 않았습니다.
 
 SDK 근거: https://github.com/google-ai-edge/mediapipe/blob/v0.10.26/mediapipe/java/com/google/mediapipe/framework/image/BitmapImageContainer.java
+
+## 1.1.2 바코드 위치와 확정
+
+CameraX UseCaseGroup/ViewPort로 Preview/ImageAnalysis/ImageCapture의 가시 영역을 일치시킵니다. CameraFrames는 cropRect, Y 평면 rowStride/pixelStride/버퍼 시작 위치, 회전 0/90/180/270도를 반영합니다. 정규화된 가이드 영역은 UI·분석·결과 사진에 같은 값으로 사용합니다. 상태 문구와 확대 컨트롤의 높이를 고정해 가이드가 준비된 뒤 미리보기 크기가 변하지 않도록 합니다.
+
+시작/터치/초점 버튼에서 PreviewView.meteringPointFactory로 같은 위치의 AF+AE를 요청합니다. 터치하면 가이드를 그 위치로 옮기고 초점 결과를 표시합니다. 초점 진행 중 또는 확대 직후 프레임은 확정하지 않으며 과거 확인 상태를 초기화합니다. 분석 목표 해상도는 1920x1080, 촬영 목표는 1920x1440이고 기기 스트림 제약에 따라 CameraX가 대체 해상도를 고릅니다. 사진은 MAXIMIZE_QUALITY로 촬영합니다.
+
+BarcodeScan은 ZXing 3.5.3의 실제 1D 행 디코더로 구별되는 최대 31개 행을 읽습니다. 같은 값·형식과 유사한 X 범위가 3개 이상 행에서 충분한 높이에 걸쳐 일치해야 후보가 됩니다. 후보가 여러 개면 초점을 맞춘 위치에 가까운 것을 우선합니다. 세로/역방향/반전과 별도 2D 디코더도 지원합니다. StableBarcode는 같은 위치의 3프레임과 최소 시간 간격을 확인합니다. 누락·변경·긴 간격·초점 변경에서는 누적 결과를 버립니다. 3회 표시는 확률이 아닌 확인 횟수입니다.
+
+확정 후에는 같은 프레임의 가이드 안 사진을 그대로 전달하고 범용 객체 검출이 다른 제품 영역으로 교체하지 않습니다. 정지 사진은 선택한 크롭만 바코드/OCR로 분석합니다. 공개 DB 미등록/연결 실패는 바코드 인식 실패와 구분하고, 결과/기록/검색어는 바코드 번호를 우선합니다. 기존 DB 스키마와 저장 기록은 변경하지 않습니다.

@@ -56,8 +56,11 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
         val b = withContext(Dispatchers.IO) { Images.load(getApplication(), uri) }
         prepare(b); page = "crop"
     }
-    fun cameraPhoto(bitmap: Bitmap, code: Code? = null) = work("촬영 사진을 처리하는 중") {
-        prepare(bitmap)
+    fun cameraPhoto(bitmap: Bitmap, code: Code? = null, barcodeArea: Boolean = false) = work("촬영 사진을 처리하는 중") {
+        if (barcodeArea || code != null) {
+            photo = bitmap; regions = emptyList(); region = RectF(0f, 0f, 1f, 1f)
+            photoNotes = if (code != null) listOf("가이드 안의 같은 위치에서 바코드를 연속 3회 확인했습니다.") else emptyList()
+        } else prepare(bitmap)
         if (code != null) analyzeInternal(bitmap, code) else page = "crop"
     }
     private suspend fun prepare(bitmap: Bitmap) {
@@ -71,8 +74,8 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun analyzeInternal(bitmap: Bitmap, known: Code? = null) {
         val notes = photoNotes.toMutableList()
         val crop = withContext(Dispatchers.Default) { Images.crop(bitmap, region) }
-        val code = known ?: withContext(Dispatchers.Default) { Images.decode(bitmap) ?: Images.decode(crop) }
-        val text = if (enabled("ocr")) try { withContext(Dispatchers.Default) { vision.text(bitmap) } }
+        val code = known ?: withContext(Dispatchers.Default) { Images.decode(crop) }
+        val text = if (enabled("ocr")) try { withContext(Dispatchers.Default) { vision.text(crop) } }
             catch (e: Exception) { notes += "OCR 실행 실패: ${e.message?.take(100)}"; "" } else ""
         val vector = if (enabled("embedding")) try { withContext(Dispatchers.Default) { vision.embedding(crop) } }
             catch (e: Exception) { notes += "이미지 모델 실행 실패: ${e.message?.take(100)}"; null } else null
@@ -89,7 +92,7 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
         val path = withContext(Dispatchers.IO) { Images.save(getApplication(), crop) }
         result = ScanResult(code, text, TextClues.extract(text), product, candidates, notes, path, vector,
             regions.firstOrNull { it.box == region }?.label.orEmpty())
-        query = product?.let { listOf(it.brand, it.name, it.quantity).filter(String::isNotBlank).joinToString(" ") } ?: result!!.clues.query.ifBlank { code?.value.orEmpty() }
+        query = product?.let { listOf(it.brand, it.name, it.quantity).filter(String::isNotBlank).joinToString(" ") } ?: gtin ?: result!!.clues.query.ifBlank { code?.value.orEmpty() }
         if (enabled("history")) result = withContext(Dispatchers.IO) { store.save(result!!) }
         page = "result"; refreshInternal()
     }
@@ -134,7 +137,7 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
         withContext(Dispatchers.IO) { store.register(Product(listOf(name.trim(), model.trim()).filter(String::isNotBlank).joinToString(" "), brand.trim(), r.code?.let(BarcodeRules::lookup).orEmpty(), r.clues.size, image = r.photo, source = "사용자 등록"), vector) }
         refreshInternal(); error = "내 카탈로그에 등록했습니다. 다른 각도의 사진도 같은 이름으로 등록하면 비교에 도움이 됩니다."
     }
-    fun open(record: ScanResult) { result = record; query = record.product?.name ?: record.clues.query.ifBlank { record.code?.value.orEmpty() }; page = "result" }
+    fun open(record: ScanResult) { result = record; query = record.product?.name ?: record.code?.let(BarcodeRules::lookup) ?: record.clues.query.ifBlank { record.code?.value.orEmpty() }; page = "result" }
     fun delete(table: String, id: Long? = null) = work("기기 데이터를 삭제하는 중") {
         withContext(Dispatchers.IO) { store.delete(table, id) }; if (table == "history" && (id == null || result?.id == id)) result = null
         refreshInternal()

@@ -84,23 +84,9 @@ object Images {
     fun decode(bitmap: Bitmap): Code? {
         val pixels = IntArray(bitmap.width * bitmap.height)
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-        var source: LuminanceSource = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
-        repeat(2) {
-            val result = decode(source)
-            if (result != null) return result
-            val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, Matrix().apply { postRotate(90f) }, false)
-            val p = IntArray(rotated.width * rotated.height); rotated.getPixels(p, 0, rotated.width, 0, 0, rotated.width, rotated.height)
-            source = RGBLuminanceSource(rotated.width, rotated.height, p); rotated.recycle()
-        }
-        return null
+        return decode(RGBLuminanceSource(bitmap.width, bitmap.height, pixels))
     }
     fun decode(source: LuminanceSource): Code? {
-        val reader = MultiFormatReader()
-        reader.setHints(mapOf(DecodeHintType.TRY_HARDER to true, DecodeHintType.CHARACTER_SET to "UTF-8"))
-        for (s in listOf(source, source.invert())) {
-            try { val r = reader.decodeWithState(BinaryBitmap(HybridBinarizer(s))); return Code(r.text, r.barcodeFormat.name) }
-            catch (_: NotFoundException) { } finally { reader.reset() }
-        }
-        return null
+        return BarcodeScan.find(source)?.code
     }
 }

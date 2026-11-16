@@ -10,13 +10,16 @@ android {
         applicationId = "app.productlens"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.1.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += "arm64-v8a" }
     }
     buildFeatures { compose = true; buildConfig = true }
-    testOptions { unitTests.all { test -> test.inputs.property("productlensLiveUpdate", System.getenv("PRODUCTLENS_LIVE_UPDATE") ?: "0") } }
+    testOptions { unitTests.all { test ->
+        test.inputs.property("productlensLiveUpdate", System.getenv("PRODUCTLENS_LIVE_UPDATE") ?: "0")
+        test.inputs.property("localBarcodePhoto", System.getenv("PRODUCTLENS_BARCODE_PHOTO") ?: "")
+    } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     androidResources { noCompress += "tflite" }
     packaging { resources.excludes += setOf("META-INF/DEPENDENCIES", "META-INF/LICENSE.md", "META-INF/NOTICE.md") }

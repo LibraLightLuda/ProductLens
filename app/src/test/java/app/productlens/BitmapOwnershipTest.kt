@@ -17,6 +17,30 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [28], manifest = Config.NONE)
 @GraphicsMode(GraphicsMode.Mode.LEGACY)
 class BitmapOwnershipTest {
+    @Test fun cameraPlanePaddingCropAndRotationMatchThePreviewViewport() {
+        val bytes = byteArrayOf(99, 99, 0, 1, 2, 3, 99, 99, 4, 5, 6, 7, 99, 99)
+        val plane = object : androidx.camera.core.ImageProxy.PlaneProxy {
+            override fun getBuffer() = java.nio.ByteBuffer.wrap(bytes).apply { position(2) }
+            override fun getRowStride() = 6
+            override fun getPixelStride() = 1
+        }
+        val infoType = androidx.camera.core.ImageInfo::class.java
+        val info = java.lang.reflect.Proxy.newProxyInstance(infoType.classLoader, arrayOf(infoType)) { _, method, _ ->
+            check(method.name == "getRotationDegrees"); 90
+        } as androidx.camera.core.ImageInfo
+        val proxyType = androidx.camera.core.ImageProxy::class.java
+        val image = java.lang.reflect.Proxy.newProxyInstance(proxyType.classLoader, arrayOf(proxyType)) { _, method, _ ->
+            when (method.name) {
+                "getCropRect" -> android.graphics.Rect(1, 0, 4, 2)
+                "getPlanes" -> arrayOf(plane)
+                "getImageInfo" -> info
+                else -> error(method.name)
+            }
+        } as androidx.camera.core.ImageProxy
+        val frame = CameraFrames.luminance(image)
+        assertEquals(2, frame.width); assertEquals(3, frame.height)
+        assertArrayEquals(byteArrayOf(5, 1, 6, 2, 7, 3), frame.matrix)
+    }
     private fun photo() = Bitmap.createBitmap(32, 24, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.GREEN) }
 
     @Test fun exactSdkRecyclesTheBitmapPassedToItsBuilder() {

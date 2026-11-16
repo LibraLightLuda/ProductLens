@@ -119,7 +119,7 @@ class MainActivity : ComponentActivity() {
                     if (vm.history.isEmpty()) Info("아직 인식 기록이 없어요. 제품 앞면이나 바코드를 촬영해 보세요.")
                     vm.history.take(3).forEach { r -> HistoryCard(r, { vm.open(r) }) }
                 }
-                "camera" -> CameraScreen(scanOnly, vm::cameraPhoto, { vm.error = it }, { vm.page = "home" })
+                "camera" -> CameraScreen(scanOnly, { bitmap, code -> vm.cameraPhoto(bitmap, code, scanOnly) }, { vm.error = it }, { vm.page = "home" })
                 "crop" -> CropScreen(vm)
                 "result" -> vm.result?.let { ResultScreen(vm, it, ::open) } ?: ScrollPage { Info("기록이 삭제되었습니다."); Button(onClick = { vm.page = "home" }) { Text("다시 인식하기") } }
                 "history" -> HistoryScreen(vm)
@@ -183,8 +183,8 @@ class MainActivity : ComponentActivity() {
     val p = r.product
     ScrollPage {
         if (r.photo.isNotBlank()) AsyncImage(r.photo, "분석한 제품 영역", Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 220.dp), contentScale = ContentScale.Fit)
-        Text(if (p != null) "바코드로 공개 상품을 찾았습니다" else "제품을 정확히 식별하지 못했습니다", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
-        Title(p?.name ?: r.clues.query.ifBlank { "확인 가능한 근거와 검색어를 확인하세요" })
+        Text(when { p != null -> "바코드로 공개 상품을 찾았습니다"; r.code?.let(BarcodeRules::lookup) != null -> "바코드 인식 완료 · 상품 정보는 확인하지 못했습니다"; else -> "제품을 정확히 식별하지 못했습니다" }, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+        Title(r.title)
         p?.let {
             if (it.image.isNotBlank() && vm.enabled("online")) AsyncImage(it.image, "공개 DB의 상품 사진", Modifier.fillMaxWidth().heightIn(max = 180.dp))
             SelectionContainer { Text(listOf("브랜드: ${it.brand.ifBlank { "정보 없음" }}", "규격: ${it.quantity.ifBlank { "정보 없음" }}", "제조 장소: ${it.manufacturer.ifBlank { "정보 없음" }}", "카테고리: ${it.categories.ifBlank { "정보 없음" }}", it.description).filter(String::isNotBlank).joinToString("\n")) }
@@ -231,7 +231,7 @@ class MainActivity : ComponentActivity() {
 @Composable private fun HistoryCard(r: ScanResult, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         if (r.photo.isNotBlank()) AsyncImage(r.photo, null, Modifier.size(56.dp), contentScale = ContentScale.Crop) else Icon(Icons.Outlined.QrCodeScanner, null, Modifier.size(36.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(r.product?.name ?: r.clues.query.ifBlank { r.code?.value ?: "사진 인식" }, maxLines = 2, fontWeight = FontWeight.SemiBold); Text(SimpleDateFormat("MM.dd HH:mm", Locale.KOREA).format(Date(r.time)), style = MaterialTheme.typography.bodySmall) }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(r.title, maxLines = 2, fontWeight = FontWeight.SemiBold); Text(SimpleDateFormat("MM.dd HH:mm", Locale.KOREA).format(Date(r.time)), style = MaterialTheme.typography.bodySmall) }
         Icon(Icons.Outlined.ChevronRight, null)
     } }
 }

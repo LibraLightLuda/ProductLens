@@ -18,7 +18,9 @@ import java.util.concurrent.TimeUnit
 
 data class ScanResult(val code: Code? = null, val text: String = "", val clues: Clues = TextClues.extract(text),
     val product: Product? = null, val candidates: List<Candidate> = emptyList(), val messages: List<String> = emptyList(),
-    val photo: String = "", val vector: FloatArray? = null, val category: String = "", val id: Long = 0, val time: Long = System.currentTimeMillis())
+    val photo: String = "", val vector: FloatArray? = null, val category: String = "", val id: Long = 0, val time: Long = System.currentTimeMillis()) {
+    val title get() = product?.name ?: code?.let(BarcodeRules::lookup)?.let { "바코드 $it" } ?: clues.query.ifBlank { code?.value ?: "사진 인식" }
+}
 
 fun Product.json() = JSONObject().put("name", name).put("brand", brand).put("barcode", barcode).put("quantity", quantity)
     .put("categories", categories).put("image", image).put("source", source).put("manufacturer", manufacturer).put("description", description)
@@ -48,7 +50,7 @@ class LensStore(context: Context, name: String = "lens.db") : SQLiteOpenHelper(c
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { error("지원하지 않는 DB 버전: $oldVersion → $newVersion") }
     @Synchronized fun save(result: ScanResult): ScanResult {
-        val cv = ContentValues().apply { put("time", result.time); put("name", result.product?.name ?: result.clues.query.ifBlank { result.code?.value ?: "사진 인식" }); put("payload", result.json().toString()); put("photo", result.photo) }
+        val cv = ContentValues().apply { put("time", result.time); put("name", result.title); put("payload", result.json().toString()); put("photo", result.photo) }
         val id = if (result.id > 0) { writableDatabase.update("history", cv, "id=?", arrayOf(result.id.toString())); result.id }
             else writableDatabase.insertOrThrow("history", null, cv)
         return result.copy(id = id)

@@ -7,6 +7,11 @@ import com.google.zxing.MultiFormatWriter
 import com.google.zxing.RGBLuminanceSource
 
 class CoreTest {
+    @Test fun barcodeIdentityIsNotReplacedByNutritionOcrInResultTitles() {
+        val result = ScanResult(code = Code("8801097136618", "EAN_13"), text = "지방0g 0% 내수있습니다")
+        assertEquals("바코드 8801097136618", result.title)
+        assertEquals("등록된 상품명", result.copy(product = Product("등록된 상품명")).title)
+    }
     @Test fun productionZxingDecoderReadsActualEanUpcQrSymbols() {
         for ((value, format) in listOf("3017620422003" to BarcodeFormat.EAN_13, "96385074" to BarcodeFormat.EAN_8,
             "036000291452" to BarcodeFormat.UPC_A, "04252614" to BarcodeFormat.UPC_E, "https://example.org/product" to BarcodeFormat.QR_CODE)) {
