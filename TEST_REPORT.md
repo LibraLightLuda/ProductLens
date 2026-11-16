@@ -98,3 +98,16 @@ PUBLICATION.json은 공개 이후 검증 기록입니다. 공개 APK와 소스 Z
 - 기기: adb 연결된 ARM64 스마트폰 없음. 사용자의 스마트폰에서 수정 APK로 실제 촬영·한글 OCR·결과 화면까지 재확인한 것은 아님. 초기 에뮬레이터 실행 거부를 재시도하거나 우회하지 않음.
 
 수정 범위는 Vision의 추론 입력 소유권, 회귀 테스트 및 버전/배포 문서입니다. 이미지 인식을 끄거나 오류를 숨기는 처리를 추가하지 않았습니다. SDK 원본: https://github.com/google-ai-edge/mediapipe/blob/v0.10.26/mediapipe/java/com/google/mediapipe/framework/image/BitmapImageContainer.java
+
+### 1.1.1 공개 배포 후 확인
+
+공개 릴리스: https://github.com/LibraLightLuda/ProductLens/releases/tag/v1.1.1
+
+- 공개 후 앱과 같은 업데이트 코드로 최신 1.1.1 APK 전체 69,492,869바이트를 인증 없이 다운로드하고 SHA-256을 검증했습니다.
+- 전체 JVM 테스트 **22개 통과, 실패 0, 건너뜀 0**. 비트맵 수명 회귀 테스트 4개 포함입니다.
+- APK·소스 ZIP·SHA256SUMS의 GitHub digest가 모두 로컬 파일과 일치합니다.
+- apksigner로 1.1.1 APK를 검증하고 기존 1.1.0과 동일한 인증서임을 확인했습니다. 패키지는 app.productlens, versionCode 3, versionName 1.1.1입니다.
+- Lint 오류 0, 경고 33. Robolectric은 API 28로 실행했으며 SDK 36 테스트에는 Java 21이 필요하다는 안내가 있습니다. 이 테스트를 SDK 36/실기기 검증으로 표시하지 않습니다.
+- 공개 이후 추가한 검증 기록은 PUBLICATION.json 및 이 문서입니다. 공개 APK·소스 ZIP과 태그의 앱 코드는 교체하지 않았습니다.
+
+사용자의 스마트폰에서 수정본으로 재촬영·한국어 OCR·결과 표시를 확인한 것은 아닙니다. Android의 실제 네이티브 추론과 PC의 비트맵 수명 회귀 테스트를 구분합니다.

@@ -1,38 +1,47 @@
 {
   "repository": "https://github.com/LibraLightLuda/ProductLens",
   "visibility": "PUBLIC",
-  "version": "1.1.0",
-  "versionCode": 2,
-  "release": "https://github.com/LibraLightLuda/ProductLens/releases/tag/v1.1.0",
+  "version": "1.1.1",
+  "versionCode": 3,
+  "release": "https://github.com/LibraLightLuda/ProductLens/releases/tag/v1.1.1",
   "artifacts": [
     {
-      "name": "ProductLens-1.1.0-debug.apk",
-      "bytes": 69719056,
-      "sha256": "d14ce1e3b4506e621e063a293e7a668f6cb17e44d9c4f05523579330b7d160e0",
-      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.0/ProductLens-1.1.0-debug.apk"
+      "name": "ProductLens-1.1.1-debug.apk",
+      "bytes": 69492869,
+      "sha256": "f4e3afc62e022861cf3dd9eca8a7f3ede1b8143a33bc940d07f4031de176165e",
+      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.1/ProductLens-1.1.1-debug.apk"
     },
     {
-      "name": "ProductLens-1.1.0-source.zip",
-      "bytes": 16560440,
-      "sha256": "a471d5a0cc71049b84fa30adbaf8dad1257f4bbe9b5f8ab2db7f03bc8daca6c0",
-      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.0/ProductLens-1.1.0-source.zip"
+      "name": "ProductLens-1.1.1-source.zip",
+      "bytes": 16571808,
+      "sha256": "591ca6d0eebfe57c32d37ea94afcd621b585746e72e9993ca0aa91b8e1ba9e53",
+      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.1/ProductLens-1.1.1-source.zip"
     },
     {
       "name": "SHA256SUMS.txt",
       "bytes": 292,
-      "sha256": "e64a53042dba7539f5f3357a1cdcf021355c1a74df22a391ae3eb3a43bfc3745",
-      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.0/SHA256SUMS.txt"
+      "sha256": "b5a7be7d6549f5c2ebb8f7afdfd4eece03003ad8fdeca66bff8e170c04c9f2f3",
+      "url": "https://github.com/LibraLightLuda/ProductLens/releases/download/v1.1.1/SHA256SUMS.txt"
     }
   ],
-  "tests_passed": 18,
+  "tests_passed": 22,
   "tests_failed": 0,
   "tests_skipped": 0,
   "lint_errors": 0,
-  "lint_warnings": 32,
+  "lint_warnings": 33,
+  "bitmap_regression": {
+    "sdk": "MediaPipe 0.10.26 Java image classes",
+    "runner": "Robolectric 4.16.1, Android API 28, LEGACY graphics",
+    "before_tests": 4,
+    "before_failures": 3,
+    "after_tests": 4,
+    "after_failures": 0,
+    "source_bitmap_preserved": true,
+    "inference_copy_released": true
+  },
   "live_public_apk_download": "PASS - app ReleaseUpdate code, no GitHub credentials",
-  "startup_notice_policy": "PASS - once per newer version",
   "signatures_verified": true,
   "signing_certificate_sha256": "53d3a031547f6384a3efa67dbfbb0a0d4f640d8e5541c328f0fce76e8e0e37d9",
-  "release_commit": "22735698349ea58a030f01a903b83a92b05c4f90",
-  "android_installation": "NOT RUN - no connected ARM64 device; permission, installer and replacement flow unverified"
+  "release_commit": "aed85e72bbb7f53682dc3ea155fe46fe413f7019",
+  "android_installation": "NOT RUN - no connected ARM64 device; full camera/OCR/native inference on the reporting phone unverified"
 }
