@@ -68,3 +68,16 @@ v1.0.0 저장소와 정식 릴리스를 먼저 공개한 뒤 실제 GitHub 릴�
 추가 JVM 테스트: 실제 1.0.0 릴리스 파싱, 숫자 버전 비교, 같은 새 버전 알림 억제/다음 새 버전 재알림, draft/prerelease 제외, 다른 저장소·잘못된 이름·해시·크기·중복 APK 거부, HTTPS 리다이렉트 제한, 응답 크기 제한, 낮은 versionCode·다른 패키지/서명 거부, 파일 변조 검출입니다. 실제 GitHub 최신 릴리스와 APK 전체 다운로드 검증은 PRODUCTLENS_LIVE_UPDATE=1일 때 별도 실행하는 LiveReleaseTest로 분리했습니다.
 
 연결된 ARM64 Android 기기가 없어 설치 출처 허용·설치 화면·실제 앱 교체·영속 알림 상태의 기기 재시작 검증은 수행하지 못했습니다. 이전 에뮬레이터 실행 거부를 우회하거나 시스템 드라이버를 변경하지 않았습니다.
+
+## 1.1.0 공개 배포 후 검증 완료
+
+공개 릴리스: https://github.com/LibraLightLuda/ProductLens/releases/tag/v1.1.0
+
+- 공개 배포 전 일반 JVM 테스트 17개 통과, 실제 공개 APK 다운로드 테스트 1개는 별도 실행 대기 상태였습니다.
+- 공개 배포 후 PRODUCTLENS_LIVE_UPDATE=1로 전체 JVM 테스트를 실행하여 **18개 통과, 실패 0, 건너뜀 0**을 확인했습니다.
+- LiveReleaseTest는 앱의 ReleaseUpdate.latest/download 코드를 그대로 사용해 인증 토큰 없이 최신 정식 릴리스와 APK 전체 69,719,056바이트를 실제 다운로드했습니다. GitHub digest, 파일 크기와 SHA-256 일치를 확인했습니다.
+- 최신 버전 1.1.0 판정과 이전 버전 기준 1회 알림/동일 버전 재알림 억제 규칙을 통과했습니다. Android UI의 실제 알림 재실행 검증을 뜻하지 않습니다.
+- Android apksigner로 1.0.0/1.1.0 APK 서명을 각각 검증하고 동일한 서명 인증서임을 확인했습니다. versionCode 2, versionName 1.1.0, app.productlens, ARM64도 패키지에서 확인했습니다.
+- Lint 오류 0, 경고 32개이며 APK·소스 ZIP·SHA256SUMS의 GitHub 자산 digest가 모두 로컬 파일과 같습니다.
+
+PUBLICATION.json은 공개 이후 검증 기록입니다. 공개 APK와 소스 ZIP을 교체하지 않았습니다. GitHub main의 이 문서와 기록은 릴리스 공개 후 추가한 근거이며, 태그의 앱 코드는 변경하지 않았습니다. 실제 ARM64 Android 설치·설치 출처 권한·앱 교체·영속 알림 상태 검증은 여전히 미수행입니다.
