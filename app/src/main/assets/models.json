@@ -1,0 +1,16 @@
+[
+  {
+    "file": "mobilenet_v3_small.tflite",
+    "bytes": 4117670,
+    "sha256": "bbbb4c51a55a53905af1daec995ca1aae355046f8839bb8c9f5ce9271394bc40",
+    "license": "Apache-2.0",
+    "url": "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_small/float32/1/mobilenet_v3_small.tflite"
+  },
+  {
+    "file": "efficientdet_lite0.tflite",
+    "bytes": 13836895,
+    "sha256": "40338edf5ec70d43e318b0a716a84d4564cd1802759a7a07170c7e43796dbf58",
+    "license": "Apache-2.0",
+    "url": "https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float32/1/efficientdet_lite0.tflite"
+  }
+]

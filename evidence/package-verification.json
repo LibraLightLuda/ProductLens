@@ -1,0 +1,35 @@
+{
+  "jvm_tests": 7,
+  "jvm_failures": 0,
+  "lint": {
+    "Warning": 28
+  },
+  "apk_bytes": 69459603,
+  "apk_sha256": "7f63291c38f6d4fb29361c7238bbfeed8ac9e79db5bd82763d79b6e9ec445c53",
+  "abis": [
+    "arm64-v8a"
+  ],
+  "bundled_korean_and_latin_models": true,
+  "bundled_model_hashes_verified": true,
+  "android_execution": "NOT RUN - no device, emulator hypervisor unavailable; software attempt denied by policy",
+  "desktop_model_test": {
+    "platform": "Windows desktop CPU, not Android",
+    "embedding_dimensions": 1024,
+    "resized_burger_to_burger_cosine": 0.9996362328529358,
+    "resized_burger_to_cat_cosine": 0.10339793562889099,
+    "detected_output_shapes": [
+      [
+        1,
+        19206,
+        90
+      ],
+      [
+        1,
+        19206,
+        4
+      ]
+    ],
+    "elapsed_seconds": 0.051879999999073334,
+    "model_hashes_verified": true
+  }
+}

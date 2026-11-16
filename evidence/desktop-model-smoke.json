@@ -1,0 +1,20 @@
+{
+  "platform": "Windows desktop CPU, not Android",
+  "embedding_dimensions": 1024,
+  "resized_burger_to_burger_cosine": 0.9996362328529358,
+  "resized_burger_to_cat_cosine": 0.10339793562889099,
+  "detected_output_shapes": [
+    [
+      1,
+      19206,
+      90
+    ],
+    [
+      1,
+      19206,
+      4
+    ]
+  ],
+  "elapsed_seconds": 0.051879999999073334,
+  "model_hashes_verified": true
+}

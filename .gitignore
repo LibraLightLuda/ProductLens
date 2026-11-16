@@ -1,0 +1,12 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+*.iml
+.idea/
+.venv-test/
+/dist/
+/evidence/*
+!/evidence/desktop-model-smoke.json
+!/evidence/model-license-metadata.txt
+!/evidence/package-verification.json
