@@ -57,3 +57,11 @@ DB: ODbL 1.0, 개별 내용: DbCL, 상품 사진: CC BY-SA 3.0. 결과마다 출
 공식 릴리스와 이슈/보안 페이지를 확인했습니다. ZXing의 유지보수 모드, JourneyApps의 구형 카메라 흐름, MediaPipe 0.10.26의 Android 16KB 페이지 지원 안내를 고려했습니다. MediaPipe 공식 보안 페이지의 공개 권고 부재는 무취약성을 뜻하지 않습니다. Maven 전체 CVE 정밀 감사나 모든 OEM/ABI 검증을 수행했다고 주장하지 않습니다. Play 배포 전 최신 정책, SDK 보안 공지, 네이티브 라이브러리 16KB 정렬과 실제 ARM 기기 검증이 필요합니다.
 
 테스트 전용 burger.jpg/cat.jpg는 Google MediaPipe 공식 테스트 자산 저장소에서 내려받아 Android 테스트 APK에만 포함합니다. 일반 앱에는 샘플 상품이나 테스트 후보가 들어가지 않습니다. https://github.com/google-ai-edge/mediapipe/tree/master/mediapipe/tasks/testdata/vision
+
+## 1.1.0 업데이트 기능의 추가 구성
+
+기존 OkHttp, Coroutines, AndroidX FileProvider/PackageInfoCompat, Android PackageManager를 사용합니다. 추가 런타임 의존성은 없습니다. JVM에서 Android JSON 파서를 검증하기 위해 테스트 전용 org.json:json:20240303을 사용하며 APK에는 이 JAR를 넣지 않습니다. JSON-java 출처: https://github.com/stleary/JSON-java
+
+GitHub 공식 정식 릴리스 API: https://docs.github.com/en/rest/releases/releases#get-the-latest-release
+자산 digest/size: https://docs.github.com/en/rest/releases/assets
+Android 출처별 설치 권한: https://developer.android.com/reference/android/content/pm/PackageManager#canRequestPackageInstalls()

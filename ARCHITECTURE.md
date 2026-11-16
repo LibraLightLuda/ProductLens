@@ -36,3 +36,11 @@ CameraX / 시스템 Photo Picker → 해상도 제한·회전 보정 → Efficie
 `ProductSource`는 바코드 → Lookup 계약입니다. 추가 DB는 같은 인터페이스를 구현하여 합법적 소스만 추가합니다. Open Facts v3 `product_type=all`은 food/beauty/petfood/product 유형을 통합하며 공식 도메인으로의 HTTPS 이동만 허용합니다. 키·로그인은 없습니다. 앱은 보수적으로 12요청/분과 초기 요청 5초 간격을 적용하며, 리다이렉트도 횟수에 포함합니다. HTTP 429의 Retry-After를 존중하고 자동 재시도/자동 완성 검색을 하지 않습니다. API 정책은 2026-11-16 조사 기준 상품 읽기 15회/분/IP, 검색 10회/분/IP이며 출시 전 재확인합니다.
 
 사진 업로드 코드는 없습니다. 외부 브라우저 검색은 명시적 클릭에만 동작하며 코드 속 URL을 자동 실행하지 않습니다. Android INTERNET, CAMERA, ACCESS_NETWORK_STATE 외에 저장소·위치·연락처 권한을 요구하지 않습니다. 사진 선택은 Photo Picker, 미지원 기기에서는 AndroidX의 시스템 문서 선택 대체 경로를 사용합니다.
+
+## GitHub 업데이트 (1.1.0)
+
+ReleaseUpdate는 공개 GitHub releases/latest를 토큰 없이 읽고, draft/prerelease를 제외하며 숫자 SemVer와 정확한 APK 이름·주소·업로드 상태·크기·SHA-256을 검증합니다. 메타데이터는 최대 1MB, APK는 최대 100MB이며 시간 제한·리다이렉트 호스트 제한을 적용합니다. 단일 UpdateViewModel의 busy 상태로 요청을 직렬화합니다.
+
+시작 확인은 ViewModel 생성 시 한 번이며 화면 회전에는 반복하지 않습니다. shouldNotifyUpdate가 설치 버전/최신 버전/영속 lastNotified 버전을 비교합니다. 실제 시작 알림을 그릴 때 버전을 기록하므로 같은 버전은 재실행에도 다시 알리지 않습니다. 수동 확인은 이 기록과 무관하게 가능합니다. 같은 알림도 앱 데이터 삭제 후에는 다시 나올 수 있습니다.
+
+다운로드 파일은 cache/updates의 임시 파일에 스트리밍하고 해시·크기를 검증한 뒤 정식 파일명으로 옮깁니다. 설치 요청 전에 디스크 파일을 다시 해시 검사하며 Android PackageManager로 패키지명·정확한 versionName·상승한 versionCode·설치 앱과 같은 서명을 확인합니다. FileProvider는 이 폴더만 공유하며 외부 공개되지 않습니다. REQUEST_INSTALL_PACKAGES 권한과 출처 허용 뒤 사용자 확인이 필요한 Android 설치 화면을 엽니다. 무인 설치는 없습니다. 인식 기록·카탈로그 DB는 변경하지 않습니다.

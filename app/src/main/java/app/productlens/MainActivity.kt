@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun LensApp(vm: LensViewModel = viewModel()) {
+    val updates: UpdateViewModel = viewModel()
     val context = LocalContext.current
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { it?.let(vm::load) }
     fun pick() = picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -123,13 +124,14 @@ class MainActivity : ComponentActivity() {
                 "result" -> vm.result?.let { ResultScreen(vm, it, ::open) } ?: ScrollPage { Info("기록이 삭제되었습니다."); Button(onClick = { vm.page = "home" }) { Text("다시 인식하기") } }
                 "history" -> HistoryScreen(vm)
                 "catalog" -> CatalogScreen(vm, ::pick)
-                "settings" -> SettingsScreen(vm, ::open)
+                "settings" -> SettingsScreen(vm, updates, ::open)
             }
             if (vm.busy) Surface(Modifier.fillMaxSize().clickable(enabled = true, onClick = {}), color = MaterialTheme.colorScheme.scrim.copy(alpha = .55f)) {
                 Box(contentAlignment = Alignment.Center) { Card { Column(Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) { CircularProgressIndicator(); Text(vm.status) } } }
             }
         }
     }
+    if (!vm.busy && vm.error.isEmpty() && vm.page == "home") StartupUpdateNotice(updates) { vm.page = "settings" }
     if (vm.error.isNotEmpty()) AlertDialog(onDismissRequest = { vm.error = "" }, title = { Text("안내") }, text = { Text(vm.error) }, confirmButton = { TextButton(onClick = { vm.error = "" }) { Text("확인") } })
     if (manual) AlertDialog(onDismissRequest = { manual = false }, title = { Text("바코드 직접 입력") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("8·12·13·14자리 상품 바코드를 입력하세요."); OutlinedTextField(manualValue, { manualValue = it.take(32) }, label = { Text("바코드 번호") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true) } },
         confirmButton = { TextButton(onClick = { manual = false; vm.manual(manualValue) }) { Text("조회") } }, dismissButton = { TextButton(onClick = { manual = false }) { Text("취소") } })
@@ -272,11 +274,12 @@ class MainActivity : ComponentActivity() {
     AlertDialog(onDismissRequest = dismiss, title = { Text("삭제 확인") }, text = { Text(text) }, confirmButton = { TextButton(onClick = confirm) { Text("삭제") } }, dismissButton = { TextButton(onClick = dismiss) { Text("취소") } })
 }
 
-@Composable private fun SettingsScreen(vm: LensViewModel, open: (String) -> Unit) {
+@Composable private fun SettingsScreen(vm: LensViewModel, updates: UpdateViewModel, open: (String) -> Unit) {
     val context = LocalContext.current
     var license by remember { mutableStateOf(false) }
     var delete by remember { mutableStateOf("") }
     ScrollPage {
+        UpdateControls(updates, open)
         Title("인식 설정")
         listOf(Triple("ocr", "한국어·영어 OCR", "제품 포장의 글자를 기기에서 읽습니다"), Triple("detection", "제품 영역 자동 검출", "범용 객체 검출 후 직접 영역 수정 가능"), Triple("embedding", "등록 사진 유사도 비교", "MobileNet V3 이미지 특징 사용"), Triple("online", "공개 상품 DB 온라인 조회", "바코드 번호 전송 및 공개 상품 사진 다운로드"), Triple("history", "인식 기록 자동 저장", "인식 결과와 선택 영역 사진을 기기에 저장")).forEach { (key, title, subtitle) ->
             var checked by remember(key) { mutableStateOf(vm.enabled(key)) }
@@ -289,10 +292,10 @@ class MainActivity : ComponentActivity() {
         OutlinedButton(onClick = { delete = "catalog" }) { Text("내 상품 카탈로그 전체 삭제") }
         OutlinedButton(onClick = { delete = "history" }) { Text("인식 기록 전체 삭제") }
         Title("개인정보 안내")
-        Info("카메라·갤러리 사진은 업로드하지 않습니다. OCR·객체 검출·사진 특징은 기기에서 처리합니다. 카메라 권한은 촬영에만 사용하며, 갤러리는 시스템 Photo Picker로 선택한 사진만 읽습니다.\n\n온라인 조회에는 바코드와 앱 식별 User-Agent, IP가 공개 DB로 전송됩니다. 외부 검색을 누르면 수정한 검색어가 해당 검색 서비스로 전달됩니다. ML Kit은 Google SDK이며 진단·사용 통계가 Google에 전송될 수 있습니다. Google의 약관과 개인정보 안내가 적용됩니다.\n\n기록 자동 저장을 꺼도 현재 결과 표시용 사진은 임시 보관되며 다음 앱 시작 시 저장·등록되지 않은 사진을 정리합니다. 앱 데이터의 OS 백업은 비활성화했습니다. 앱 삭제 시 기기의 기록·카탈로그도 삭제됩니다.")
+        Info("카메라·갤러리 사진은 업로드하지 않습니다. OCR·객체 검출·사진 특징은 기기에서 처리합니다. 카메라 권한은 촬영에만 사용하며, 갤러리는 시스템 Photo Picker로 선택한 사진만 읽습니다.\n\n자동 업데이트 확인에는 앱 식별 User-Agent와 IP가 GitHub로 전송됩니다. 설정에서 자동 확인을 끌 수 있습니다.\n\n온라인 조회에는 바코드와 앱 식별 User-Agent, IP가 공개 DB로 전송됩니다. 외부 검색을 누르면 수정한 검색어가 해당 검색 서비스로 전달됩니다. ML Kit은 Google SDK이며 진단·사용 통계가 Google에 전송될 수 있습니다. Google의 약관과 개인정보 안내가 적용됩니다.\n\n기록 자동 저장을 꺼도 현재 결과 표시용 사진은 임시 보관되며 다음 앱 시작 시 저장·등록되지 않은 사진을 정리합니다. 앱 데이터의 OS 백업은 비활성화했습니다. 앱 삭제 시 기기의 기록·카탈로그도 삭제됩니다.")
         TextButton(onClick = { open("https://developers.google.com/ml-kit/terms") }) { Text("ML Kit 약관·개인정보 안내") }
         TextButton(onClick = { license = true }) { Text("오픈소스·모델 라이선스 및 출처") }
-        Info("제품렌즈 1.0.0 · 공개 DB와 등록 사진은 정확한 상품을 보장하지 않습니다. 가격 정보는 제공하지 않습니다.")
+        Info("제품렌즈 ${BuildConfig.VERSION_NAME} · 공개 DB와 등록 사진은 정확한 상품을 보장하지 않습니다. 가격 정보는 제공하지 않습니다.")
     }
     if (delete.isNotBlank()) ConfirmDelete("${if (delete == "catalog") "카탈로그" else "기록"}의 모든 기기 데이터를 삭제할까요?", { delete = "" }) { vm.delete(delete); delete = "" }
     if (license) AlertDialog(onDismissRequest = { license = false }, title = { Text("라이선스 및 출처") }, text = {

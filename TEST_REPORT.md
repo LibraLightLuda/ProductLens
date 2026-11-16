@@ -60,3 +60,11 @@ python -m venv .venv-test
 ```
 
 실제 Android 실행이 가능해지면 라이브 서버 테스트와 오프라인 테스트를 분리하고, 카메라의 인식 속도·권한·반복 인식·회전·백그라운드 복귀를 확인해야 합니다. 디버그 APK 전달은 Play 게시나 실기기 품질 승인을 뜻하지 않습니다.
+
+## 1.1.0 업데이트 기능 검증
+
+v1.0.0 저장소와 정식 릴리스를 먼저 공개한 뒤 실제 GitHub 릴리스 응답을 테스트 입력으로 저장해 기능을 구현했습니다. 1.1.0의 검증은 evidence/update-build.log, evidence/package-verification.json 및 TEST-app.productlens.ReleaseUpdateTest.xml을 기준으로 확인합니다.
+
+추가 JVM 테스트: 실제 1.0.0 릴리스 파싱, 숫자 버전 비교, 같은 새 버전 알림 억제/다음 새 버전 재알림, draft/prerelease 제외, 다른 저장소·잘못된 이름·해시·크기·중복 APK 거부, HTTPS 리다이렉트 제한, 응답 크기 제한, 낮은 versionCode·다른 패키지/서명 거부, 파일 변조 검출입니다. 실제 GitHub 최신 릴리스와 APK 전체 다운로드 검증은 PRODUCTLENS_LIVE_UPDATE=1일 때 별도 실행하는 LiveReleaseTest로 분리했습니다.
+
+연결된 ARM64 Android 기기가 없어 설치 출처 허용·설치 화면·실제 앱 교체·영속 알림 상태의 기기 재시작 검증은 수행하지 못했습니다. 이전 에뮬레이터 실행 거부를 우회하거나 시스템 드라이버를 변경하지 않았습니다.

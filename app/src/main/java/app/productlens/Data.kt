@@ -115,7 +115,7 @@ class OpenFactsSource(private val context: Context, private val store: LensStore
             repeat(3) {
                 if (calls.size >= 12) return@withLock Lookup(null, "API 호출 제한 보호 중입니다.")
                 reserve()
-                val request = Request.Builder().url(url).header("User-Agent", "ProductLens/1.0 (android-app://app.productlens; Android private build)").header("Accept", "application/json").build()
+                val request = Request.Builder().url(url).header("User-Agent", "ProductLens/${BuildConfig.VERSION_NAME} (https://github.com/LibraLightLuda/ProductLens)").header("Accept", "application/json").build()
                 client.newCall(request).execute().use { response ->
                     if (response.code == 429) {
                         val delay = response.header("Retry-After")?.toLongOrNull()?.coerceIn(60, 86400) ?: 60
