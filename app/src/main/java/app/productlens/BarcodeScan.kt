@@ -19,6 +19,8 @@ internal data class ScanBox(val left: Float, val top: Float, val right: Float, v
         val intersection = max(0f, min(right, other.right) - max(left, other.left)) * max(0f, min(bottom, other.bottom) - max(top, other.top))
         return intersection >= min(width * height, other.width * other.height) * .5f
     }
+    fun tracks(other: ScanBox): Boolean = overlaps(other) ||
+        (abs((left + right - other.left - other.right) / 2) <= .18f && abs((top + bottom - other.top - other.bottom) / 2) <= .18f)
 }
 internal val scanGuide = ScanBox(.08f, .26f, .92f, .74f)
 internal data class BarcodeHit(val code: Code, val box: ScanBox, val rows: Int)
@@ -114,18 +116,26 @@ internal object BarcodeScan {
 }
 
 internal class StableBarcode {
-    private var previous: BarcodeHit? = null
-    private var lastAt = Long.MIN_VALUE
-    private var firstAt = 0L
+    private data class Observation(val hit: BarcodeHit, val at: Long)
+    private val recent = ArrayDeque<Observation>()
     var count = 0; private set
-    @Synchronized fun reset() { previous = null; count = 0; lastAt = Long.MIN_VALUE }
+    var required = 3; private set
+    @Synchronized fun reset() { recent.clear(); count = 0; required = 3 }
     @Synchronized fun observe(hit: BarcodeHit?, now: Long): BarcodeHit? {
-        if (hit == null) { reset(); return null }
-        val old = previous
-        if (old == null || old.code != hit.code || !old.box.overlaps(hit.box) || now - lastAt !in 150..1200) {
-            previous = hit; count = 1; firstAt = now; lastAt = now; return null
+        while (recent.isNotEmpty() && now - recent.first().at !in 0..1200) recent.removeFirst()
+        if (hit == null) {
+            if (recent.isEmpty() || now - recent.last().at > 700) reset()
+            return null
         }
-        count++; lastAt = now; previous = hit
-        return hit.takeIf { count >= 3 && now - firstAt >= 400 }
+        if (recent.lastOrNull()?.let { now - it.at < 100 } == true) return null
+        recent.addLast(Observation(hit, now))
+        while (recent.size > 5) recent.removeFirst()
+        val matching = recent.filter { it.hit.code == hit.code && it.hit.box.tracks(hit.box) }
+        fun clear(value: BarcodeHit) = (value.rows >= 6 && BarcodeRules.lookup(value.code) != null) ||
+            value.code.format in setOf("QR_CODE", "DATA_MATRIX", "AZTEC", "PDF_417", "MAXICODE")
+        required = if (matching.count { clear(it.hit) } >= 2 || (matching.size == 1 && clear(hit))) 2 else 3
+        count = matching.size
+        val competing = recent.filter { it.hit.code != hit.code }.groupingBy { it.hit.code }.eachCount().values.maxOrNull() ?: 0
+        return hit.takeIf { count >= required && count > competing && now - matching.first().at >= 120 }
     }
 }

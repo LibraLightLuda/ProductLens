@@ -69,3 +69,14 @@ Android 출처별 설치 권한: https://developer.android.com/reference/android
 ## 1.1.1 비트맵 회귀 테스트
 
 테스트 전용 Robolectric 4.16.1 (MIT, https://github.com/robolectric/robolectric)을 추가했습니다. PC JVM 안에서 Android API 28 비트맵과 앱이 사용하는 MediaPipe 0.10.26의 실제 Java 이미지 래퍼를 실행합니다. LEGACY 그래픽 모드를 사용하며 추론 모델·CameraX의 ARM 네이티브 실행을 대신하지 않습니다. 추가 런타임 의존성이나 모델 변경은 없습니다.
+
+## 1.1.3 보조 바코드 데이터와 테스트
+
+UPCitemdb 공식 무인증 trial lookup을 추가했습니다. 별도 키·유료 플랜·계정은 사용하지 않습니다. 공식 무료 Explorer는 일일 100회이며 앱은 보수적으로 24시간 최대 90회·10초 간격을 적용합니다. UPCitemdb 데이터는 Apache/MIT/ODbL 공개 DB로 간주하지 않으며 해당 서비스 이용 약관을 따릅니다. 원본 링크와 출처를 결과에 표시하고 OFF 라이선스를 UPCitemdb 결과에 잘못 붙이지 않습니다. 이미지 업로드는 없습니다.
+
+- 무료 플랜·호출 제한: https://www.upcitemdb.com/wp/docs/main/development/plan/
+- 공식 시작 안내·무료 endpoint: https://www.upcitemdb.com/wp/docs/main/development/getting-started/
+- 응답 계약: https://www.upcitemdb.com/wp/docs/main/development/responses/
+- 이용 약관: https://www.upcitemdb.com/terms
+
+테스트 전용 com.squareup.okhttp3:mockwebserver:4.12.0 (Apache-2.0)을 추가해 실제 공급자 HTTP 경로·캐시·제한 처리를 로컬 서버로 검증합니다. 런타임 APK에 테스트 서버를 포함하지 않습니다. https://github.com/square/okhttp/tree/parent-4.12.0/mockwebserver

@@ -102,7 +102,7 @@ class DeviceTest {
             val p = source().lookup("3017620422003"); assertEquals("Nutella", p.product?.name)
             val req = server.takeRequest(); assertTrue(req.path!!.contains("product_type=all")); assertTrue(req.getHeader("User-Agent")!!.startsWith("ProductLens/"))
             assertEquals("Nutella", source().lookup("3017620422003").product?.name); assertEquals(1, server.requestCount)
-            clearRate(); server.enqueue(MockResponse().setResponseCode(404)); assertNull(source().lookup("96385074").product)
+            clearRate(); server.enqueue(MockResponse().setResponseCode(404).setBody("{\"result\":{\"id\":\"product_not_found\"}}")); assertNull(source().lookup("96385074").product)
             assertTrue(store.cached("96385074").first)
             clearRate(); server.enqueue(MockResponse().setResponseCode(500)); assertTrue(source().lookup("036000291452").note.contains("연결 실패")); assertFalse(store.cached("036000291452").first)
             clearRate(); server.enqueue(MockResponse().setResponseCode(429).addHeader("Retry-After", "120")); assertTrue(source().lookup("036000291452").note.contains("120"))

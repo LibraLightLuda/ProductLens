@@ -1,13 +1,13 @@
 {
-  "version": "1.1.2",
-  "jvm_tests": 33,
-  "jvm_skipped": 1,
+  "version": "1.1.3",
+  "jvm_tests": 44,
+  "jvm_skipped": 2,
   "jvm_failures": 0,
   "lint": {
-    "Warning": 32
+    "Warning": 36
   },
-  "apk_bytes": 69779640,
-  "apk_sha256": "0312af9bfffdbed69c6891bde45e3ad7e591a92e6ac164927631350122c83ec8",
+  "apk_bytes": 69839866,
+  "apk_sha256": "c7c3c5afe0910d7b68bd63e27acc5c197bb0e58b2dc02817ee3a6b2265ecc58f",
   "abis": [
     "arm64-v8a"
   ],

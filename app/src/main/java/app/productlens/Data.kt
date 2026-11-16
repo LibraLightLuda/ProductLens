@@ -41,14 +41,37 @@ private fun scanJson(j: JSONObject, id: Long, time: Long): ScanResult {
         strings(j.optJSONArray("messages")), j.optString("photo"), null, j.optString("category"), id, time)
 }
 
-class LensStore(context: Context, name: String = "lens.db") : SQLiteOpenHelper(context, name, null, 1) {
+class LensStore(context: Context, name: String = "lens.db") : SQLiteOpenHelper(context, name, null, 2) {
     private val photoDir = File(context.filesDir, "photos").apply { mkdirs() }
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE history(id INTEGER PRIMARY KEY AUTOINCREMENT,time INTEGER NOT NULL,name TEXT NOT NULL,payload TEXT NOT NULL,photo TEXT NOT NULL)")
         db.execSQL("CREATE TABLE catalog(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,product TEXT NOT NULL,vector TEXT NOT NULL,photo TEXT NOT NULL)")
         db.execSQL("CREATE TABLE cache(code TEXT PRIMARY KEY,time INTEGER NOT NULL,product TEXT)")
+        db.execSQL("CREATE TABLE barcode_names(code TEXT PRIMARY KEY,product TEXT NOT NULL)")
     }
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { error("지원하지 않는 DB 버전: $oldVersion → $newVersion") }
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        check(oldVersion == 1 && newVersion == 2) { "지원하지 않는 DB 버전: $oldVersion → $newVersion" }
+        db.execSQL("CREATE TABLE IF NOT EXISTS barcode_names(code TEXT PRIMARY KEY,product TEXT NOT NULL)")
+    }
+    @Synchronized fun barcodeNames(): List<Product> = readableDatabase.rawQuery("SELECT product FROM barcode_names ORDER BY code", null).use { c ->
+        buildList { while (c.moveToNext()) add(productJson(JSONObject(c.getString(0)))) }
+    }
+    @Synchronized fun saveBarcodeName(product: Product) {
+        require(BarcodeRules.validGtin(product.barcode) && product.name.isNotBlank())
+        writableDatabase.insertWithOnConflict("barcode_names", null, ContentValues().apply {
+            put("code", product.barcode.padStart(14, '0')); put("product", product.copy(image = "", source = "사용자 등록").json().toString())
+        }, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+    @Synchronized fun deleteBarcodeName(code: String?) { writableDatabase.delete("barcode_names", if (code == null) null else "code=?", code?.let { arrayOf(it.padStart(14, '0')) }) }
+    @Synchronized fun findBarcode(code: String): Product? {
+        readableDatabase.query("barcode_names", arrayOf("product"), "code=?", arrayOf(code.padStart(14, '0')), null, null, null).use { c ->
+            if (c.moveToFirst()) return productJson(JSONObject(c.getString(0)))
+        }
+        readableDatabase.rawQuery("SELECT product FROM catalog", null).use { c ->
+            while (c.moveToNext()) productJson(JSONObject(c.getString(0))).let { if (sameGtin(it.barcode, code)) return it }
+        }
+        return null
+    }
     @Synchronized fun save(result: ScanResult): ScanResult {
         val cv = ContentValues().apply { put("time", result.time); put("name", result.title); put("payload", result.json().toString()); put("photo", result.photo) }
         val id = if (result.id > 0) { writableDatabase.update("history", cv, "id=?", arrayOf(result.id.toString())); result.id }
@@ -93,8 +116,9 @@ class LensStore(context: Context, name: String = "lens.db") : SQLiteOpenHelper(c
     }
 }
 
-data class Lookup(val product: Product?, val note: String)
-interface ProductSource { suspend fun lookup(barcode: String): Lookup }
+enum class LookupState { FOUND, NOT_FOUND, ERROR, RATE_LIMITED, OFFLINE }
+data class Lookup(val product: Product?, val note: String, val state: LookupState = if (product != null) LookupState.FOUND else LookupState.NOT_FOUND)
+interface ProductSource { suspend fun lookup(barcode: String, refresh: Boolean = false): Lookup }
 
 class OpenFactsSource(private val context: Context, private val store: LensStore,
     private val baseUrl: String = "https://world.openfoodfacts.org", private val client: OkHttpClient = OkHttpClient.Builder()
@@ -102,27 +126,27 @@ class OpenFactsSource(private val context: Context, private val store: LensStore
         .followRedirects(false).retryOnConnectionFailure(false).build()) : ProductSource {
     private val mutex = Mutex()
     private val prefs = context.getSharedPreferences("off-rate", Context.MODE_PRIVATE)
-    override suspend fun lookup(barcode: String): Lookup = withContext(Dispatchers.IO) { mutex.withLock {
+    override suspend fun lookup(barcode: String, refresh: Boolean): Lookup = withContext(Dispatchers.IO) { mutex.withLock {
         require(BarcodeRules.validGtin(barcode))
         val cached = store.cached(barcode)
-        if (cached.first) return@withLock Lookup(cached.second, "Open Facts · 기기 캐시 (상품 24시간 / 미등록 1시간)")
+        if (!refresh && cached.first) return@withLock Lookup(cached.second, "Open Facts · ${if (cached.second == null) "미등록 응답 캐시" else "상품 캐시"} (상품 24시간 / 미등록 1시간)")
         val now = System.currentTimeMillis()
         val calls = prefs.getString("calls", "").orEmpty().split(',').mapNotNull(String::toLongOrNull).filter { now - it in 0..59999 }.toMutableList()
         if (calls.size >= 12 || calls.lastOrNull()?.let { now - it < 5000 } == true || prefs.getLong("until", 0) > now)
-            return@withLock Lookup(null, "API 호출 제한 보호 중입니다. 잠시 후 다시 조회하세요.")
+            return@withLock Lookup(null, "Open Facts API 호출 제한 보호 중입니다. 잠시 후 다시 조회하세요.", LookupState.RATE_LIMITED)
         fun reserve() { calls += System.currentTimeMillis(); prefs.edit().putString("calls", calls.joinToString(",")).commit() }
         val fields = "code,product_name,product_name_ko,brands,quantity,categories,image_front_url,manufacturing_places,generic_name,product_type"
         var url = "$baseUrl/api/v3/product/$barcode?product_type=all&lc=ko&fields=$fields"
         try {
             repeat(3) {
-                if (calls.size >= 12) return@withLock Lookup(null, "API 호출 제한 보호 중입니다.")
+                if (calls.size >= 12) return@withLock Lookup(null, "Open Facts API 호출 제한 보호 중입니다.", LookupState.RATE_LIMITED)
                 reserve()
                 val request = Request.Builder().url(url).header("User-Agent", "ProductLens/${BuildConfig.VERSION_NAME} (https://github.com/LibraLightLuda/ProductLens)").header("Accept", "application/json").build()
                 client.newCall(request).execute().use { response ->
                     if (response.code == 429) {
                         val delay = response.header("Retry-After")?.toLongOrNull()?.coerceIn(60, 86400) ?: 60
                         prefs.edit().putLong("until", System.currentTimeMillis() + delay * 1000).commit()
-                        return@withLock Lookup(null, "Open Facts 호출 제한입니다. ${delay}초 이후 다시 시도하세요.")
+                        return@withLock Lookup(null, "Open Facts 호출 제한입니다. ${delay}초 이후 다시 시도하세요.", LookupState.RATE_LIMITED)
                     }
                     if (response.code in listOf(301, 302, 307, 308)) {
                         val next = response.request.url.resolve(response.header("Location").orEmpty()) ?: throw IOException("올바르지 않은 이동 주소")
@@ -130,23 +154,14 @@ class OpenFactsSource(private val context: Context, private val store: LensStore
                         if (next.scheme != "https" || next.host !in allowed) throw IOException("허용되지 않은 데이터 출처")
                         url = next.toString(); return@repeat
                     }
-                    if (response.code == 404) { store.cache(barcode, null); return@withLock Lookup(null, "공개 DB에 등록되지 않은 바코드입니다.") }
-                    if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-                    val raw = response.body?.string() ?: throw IOException("응답이 비어 있습니다")
-                    val j = JSONObject(raw).optJSONObject("product")
-                    if (j == null) { store.cache(barcode, null); return@withLock Lookup(null, "공개 DB에서 상품을 찾지 못했습니다.") }
-                    fun text(k: String) = j.optString(k).takeUnless { it == "null" }.orEmpty()
-                    if (text("code").isNotEmpty() && text("code").padStart(14, '0') != barcode.padStart(14, '0'))
-                        return@withLock Lookup(null, "DB가 반환한 바코드가 요청과 달라 상품을 확정하지 않았습니다.")
-                    val p = Product(text("product_name_ko").ifBlank { text("product_name") }.ifBlank { "이름이 없는 공개 상품" }, text("brands"), text("code").ifBlank { barcode },
-                        text("quantity"), text("categories"), text("image_front_url").takeIf { it.startsWith("https://") }.orEmpty(), response.request.url.host,
-                        text("manufacturing_places"), text("generic_name"))
-                    store.cache(barcode, p)
-                    return@withLock Lookup(p, "Open Facts API v3 · 공개 데이터 일치. 사용자 등록 정보로 오류가 있을 수 있습니다.")
+                    val raw = response.body?.byteStream()?.readLimited(1024 * 1024)?.toString(Charsets.UTF_8) ?: throw IOException("응답이 비어 있습니다")
+                    val result = parseOpenFacts(raw, response.code, barcode, response.request.url.host)
+                    if (result.state in setOf(LookupState.FOUND, LookupState.NOT_FOUND)) store.cache(barcode, result.product)
+                    return@withLock result
                 }
             }
-            Lookup(null, "데이터 출처 이동 횟수를 초과했습니다.")
-        } catch (e: IOException) { Lookup(null, "인터넷 또는 상품 DB 연결 실패: ${e.message}. 오프라인 인식은 계속 사용할 수 있습니다.") }
-          catch (e: org.json.JSONException) { Lookup(null, "상품 DB 응답을 읽지 못했습니다. 원본 바코드로 검색할 수 있습니다.") }
+            Lookup(null, "데이터 출처 이동 횟수를 초과했습니다.", LookupState.ERROR)
+        } catch (e: IOException) { Lookup(null, "Open Facts 연결 실패: ${e.message}. 오프라인 인식은 계속 사용할 수 있습니다.", LookupState.ERROR) }
+          catch (e: org.json.JSONException) { Lookup(null, "Open Facts 응답을 읽지 못했습니다. 미등록 여부를 확인할 수 없습니다.", LookupState.ERROR) }
     } }
 }

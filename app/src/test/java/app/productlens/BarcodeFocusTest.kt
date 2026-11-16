@@ -38,21 +38,36 @@ class BarcodeFocusTest {
         val wrong = correct.copy(code = Code("84141873", "EAN_8"))
         assertNull(stable.observe(wrong, 0))
         assertNull(stable.observe(correct, 250))
-        assertNull(stable.observe(correct, 500))
+        assertEquals(correct, stable.observe(correct, 500))
         assertEquals(correct, stable.observe(correct, 750))
         stable.reset()
         assertNull(stable.observe(correct, 1000))
         assertNull(stable.observe(correct.copy(box = ScanBox(.2f, .7f, .8f, .9f)), 1250))
         assertEquals(1, stable.count)
     }
-    @Test fun missingFramesLongGapsAndFocusResetCannotReuseOldConfirmation() {
+    @Test fun briefMissesPreserveEvidenceButLongGapsAndFocusResetClearIt() {
         val stable = StableBarcode()
-        val hit = BarcodeHit(Code("8801097136618", "EAN_13"), ScanBox(.2f, .3f, .8f, .6f), 8)
+        val hit = BarcodeHit(Code("8801097136618", "EAN_13"), ScanBox(.2f, .3f, .8f, .6f), 3)
         stable.observe(hit, 0); stable.observe(hit, 250)
-        assertNull(stable.observe(null, 500)); assertEquals(0, stable.count)
+        assertNull(stable.observe(null, 500)); assertEquals(2, stable.count)
+        assertEquals(hit, stable.observe(hit, 650))
         stable.observe(hit, 750); stable.observe(hit, 1000)
         assertNull(stable.observe(hit, 3000)); assertEquals(1, stable.count)
         stable.reset(); assertNull(stable.observe(hit, 3250)); assertEquals(1, stable.count)
+    }
+    @Test fun clearBarcodeNeedsOnlyTwoFramesAndToleratesSmallHandMovement() {
+        val stable = StableBarcode()
+        val hit = BarcodeHit(Code("8801097136618", "EAN_13"), ScanBox(.2f, .3f, .8f, .4f), 8)
+        assertNull(stable.observe(hit, 0)); assertEquals(2, stable.required)
+        val moved = hit.copy(box = ScanBox(.26f, .39f, .86f, .49f))
+        assertEquals(moved, stable.observe(moved, 200))
+    }
+    @Test fun inconsistentValuesAndDuplicateFramesCannotFastConfirm() {
+        val stable = StableBarcode()
+        val hit = BarcodeHit(Code("8801097136618", "EAN_13"), ScanBox(.2f, .3f, .8f, .6f), 8)
+        assertNull(stable.observe(hit, 0)); assertNull(stable.observe(hit, 20)); assertEquals(1, stable.count)
+        assertNull(stable.observe(hit.copy(code = Code("84141873", "EAN_8")), 200))
+        assertNull(stable.observe(hit.copy(code = Code("96385074", "EAN_8")), 400))
     }
     @Test fun croppedAndRotatedLuminanceMatchesTheDisplayedOrientation() {
         val frame = LumaFrame(4, 3, ByteArray(12) { it.toByte() })

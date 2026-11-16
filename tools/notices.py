@@ -30,7 +30,7 @@ for line in (root / 'evidence/runtime-dependencies.tsv').read_text(encoding='utf
                     if len(b) < 400000:
                         text = b.decode('utf-8', errors='replace')
                         notices.setdefault(hashlib.sha256(b).hexdigest(), (f'{coord}: {entry}', text))
-heading = '''ProductLens 1.0.0 - Libraries, models and attribution
+heading = '''ProductLens - Libraries, models and attribution
 
 Kotlin, AndroidX, Compose, CameraX, Coroutines, ZXing, MediaPipe, OkHttp/Okio, Coil: Apache License 2.0 unless the resolved dependency notices below state otherwise.
 
@@ -45,6 +45,10 @@ Contains information from Open Food Facts / Open Beauty Facts / Open Pet Food Fa
 https://opendatacommons.org/licenses/odbl/1-0/
 https://opendatacommons.org/licenses/dbcl/1-0/
 https://creativecommons.org/licenses/by-sa/3.0/
+
+Optional barcode lookup uses the official UPCitemdb free trial API without credentials. UPCitemdb is not an openly licensed product database. Its service terms apply; results show their source and original product link. No photos are uploaded.
+https://www.upcitemdb.com/terms
+https://www.upcitemdb.com/wp/docs/main/development/plan/
 
 User catalogue photographs stay on the device. No stock catalogue or fake products are bundled. Test photos are only in the test APK.
 

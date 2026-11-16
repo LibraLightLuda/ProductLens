@@ -180,18 +180,34 @@ class MainActivity : ComponentActivity() {
 @Composable private fun ResultScreen(vm: LensViewModel, r: ScanResult, open: (String) -> Unit) {
     var edit by remember(r.time) { mutableStateOf(r.text) }
     var register by remember { mutableStateOf(false) }
+    var saveBarcode by remember { mutableStateOf(false) }
     val p = r.product
     ScrollPage {
         if (r.photo.isNotBlank()) AsyncImage(r.photo, "분석한 제품 영역", Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 220.dp), contentScale = ContentScale.Fit)
-        Text(when { p != null -> "바코드로 공개 상품을 찾았습니다"; r.code?.let(BarcodeRules::lookup) != null -> "바코드 인식 완료 · 상품 정보는 확인하지 못했습니다"; else -> "제품을 정확히 식별하지 못했습니다" }, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+        Text(when { p != null -> "바코드로 상품을 찾았습니다"; r.code?.let(BarcodeRules::lookup) != null -> "바코드 인식 완료 · 상품 정보는 확인하지 못했습니다"; else -> "제품을 정확히 식별하지 못했습니다" }, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
         Title(r.title)
         p?.let {
             if (it.image.isNotBlank() && vm.enabled("online")) AsyncImage(it.image, "공개 DB의 상품 사진", Modifier.fillMaxWidth().heightIn(max = 180.dp))
             SelectionContainer { Text(listOf("브랜드: ${it.brand.ifBlank { "정보 없음" }}", "규격: ${it.quantity.ifBlank { "정보 없음" }}", "제조 장소: ${it.manufacturer.ifBlank { "정보 없음" }}", "카테고리: ${it.categories.ifBlank { "정보 없음" }}", it.description).filter(String::isNotBlank).joinToString("\n")) }
-            Info("출처: ${it.source}\nOpen Facts · 데이터 ODbL / 개별 내용 DbCL / 사진 CC BY-SA 3.0")
-            TextButton(onClick = { open("https://${it.source}/product/${it.barcode}") }) { Text("출처 상품 페이지 확인") }
+            Info("출처: ${it.source}\n" + when (it.source) {
+                "UPCitemdb" -> "UPCitemdb API 서비스 약관 적용 · 공개 오픈 데이터 라이선스가 아닙니다."
+                "사용자 등록" -> "기기에 직접 등록한 정보입니다."
+                else -> "Open Facts · 데이터 ODbL / 개별 내용 DbCL / 사진 CC BY-SA 3.0"
+            })
+            it.sourceUrl?.let { url -> TextButton(onClick = { open(url) }) { Text("출처 상품 페이지 확인") } }
         }
         r.code?.let { code -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { Text("인식 코드 · ${code.format}", fontWeight = FontWeight.Bold); SelectionContainer { Text(code.value) }; Text(if (BarcodeRules.lookup(code) != null) "상품 바코드 체크섬 유효" else "일반 코드 또는 상품 바코드 검증 불가", style = MaterialTheme.typography.bodySmall) } } }
+        r.code?.let(BarcodeRules::lookup)?.let { barcode ->
+            if (p == null) {
+                Info("DB에 없는 상품도 번호 그대로 일반 웹검색에서 찾을 수 있습니다. 검색 결과의 제품명·용량을 확인한 뒤 저장하면 다음부터 즉시 조회합니다.")
+                val q = URLEncoder.encode("\"$barcode\"", "UTF-8")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { open("https://www.google.com/search?q=$q") }, modifier = Modifier.weight(1f)) { Text("번호로 상품 찾기") }
+                    OutlinedButton(onClick = { open("https://search.naver.com/search.naver?query=$q") }, modifier = Modifier.weight(1f)) { Text("네이버 통합검색") }
+                }
+            }
+            OutlinedButton(onClick = { saveBarcode = true }, modifier = Modifier.fillMaxWidth()) { Text("이 바코드에 상품명 저장") }
+        }
         Title("인식 근거")
         if (r.category.isNotBlank()) Info("범용 객체 모델: ${r.category}\n검출 점수는 영역·범주 판단이며 상품 식별 정확도가 아닙니다.")
         r.messages.forEach { Info("• $it") }
@@ -216,6 +232,18 @@ class MainActivity : ComponentActivity() {
             OutlinedButton(onClick = vm::save, modifier = Modifier.weight(1f)) { Text(if (r.id > 0) "기록 저장됨" else "기록 저장") }
             Button(onClick = { register = true }, enabled = r.photo.isNotBlank(), modifier = Modifier.weight(1f)) { Text("내 상품 등록") }
         }
+    }
+    if (saveBarcode) {
+        var name by remember { mutableStateOf(p?.name.orEmpty()) }
+        var brand by remember { mutableStateOf(p?.brand.orEmpty()) }
+        var size by remember { mutableStateOf(p?.quantity.orEmpty()) }
+        AlertDialog(onDismissRequest = { saveBarcode = false }, title = { Text("바코드 상품명 저장") }, text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Info("확인한 상품명을 입력하세요. 사진 없이도 저장되며 다음 스캔부터 오프라인에서 조회합니다.")
+                SearchField(name, { name = it }, "상품명 (필수)"); SearchField(brand, { brand = it }, "브랜드 (선택)"); SearchField(size, { size = it }, "용량·규격 (선택)")
+            }
+        }, confirmButton = { TextButton(onClick = { saveBarcode = false; vm.saveBarcodeName(name, brand, size) }, enabled = name.isNotBlank()) { Text("저장") } },
+            dismissButton = { TextButton(onClick = { saveBarcode = false }) { Text("취소") } })
     }
     if (register) {
         var name by remember { mutableStateOf(p?.name ?: r.clues.query) }
@@ -254,13 +282,20 @@ class MainActivity : ComponentActivity() {
 
 @Composable private fun CatalogScreen(vm: LensViewModel, pick: () -> Unit) {
     var deletion by remember { mutableStateOf<Long?>(null) }
+    var barcodeDeletion by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
     ScrollPage {
         Title("내 상품 카탈로그")
         Info("여러 각도의 사진을 같은 제품명으로 등록하세요. 인터넷 없이 등록 사진들과 이미지 특징을 비교합니다.")
         Button(onClick = pick, modifier = Modifier.fillMaxWidth()) { Text("갤러리 사진으로 상품 등록") }
         SearchField(query, { query = it }, "등록 상품 검색")
-        if (vm.catalog.isEmpty()) Info("등록 상품이 없습니다. 사진을 선택하고 인식 결과에서 ‘내 상품 등록’을 눌러 제품명을 입력하세요.")
+        vm.barcodeNames.filter { (it.name + it.brand + it.barcode).contains(query, true) }.forEach { item ->
+            Card(Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text(item.name, fontWeight = FontWeight.Bold); Text(item.barcode); Info("바코드 상품명 · ${item.brand} ${item.quantity}") }
+                IconButton(onClick = { barcodeDeletion = item.barcode }) { Icon(Icons.Outlined.DeleteOutline, "${item.name} 바코드 상품명 삭제") }
+            } }
+        }
+        if (vm.catalog.isEmpty() && vm.barcodeNames.isEmpty()) Info("등록 상품이 없습니다. 사진을 선택하고 인식 결과에서 ‘내 상품 등록’을 눌러 제품명을 입력하세요.")
         vm.catalog.filter { (it.product.name + it.product.brand).contains(query, true) }.forEach { item -> Card(Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             AsyncImage(item.product.image, "등록 상품 사진", Modifier.size(72.dp), contentScale = ContentScale.Crop)
             Column(Modifier.weight(1f)) { Text(item.product.name, fontWeight = FontWeight.Bold); Text(item.product.brand); Text("${item.vector.size}차원 이미지 특징", style = MaterialTheme.typography.bodySmall) }
@@ -268,6 +303,7 @@ class MainActivity : ComponentActivity() {
         } } }
     }
     deletion?.let { id -> ConfirmDelete("이 상품의 등록 사진과 특징을 삭제할까요?", { deletion = null }) { vm.delete("catalog", id); deletion = null } }
+    barcodeDeletion?.let { code -> ConfirmDelete("이 바코드에 저장한 상품명을 삭제할까요?", { barcodeDeletion = null }) { vm.deleteBarcodeName(code); barcodeDeletion = null } }
 }
 
 @Composable private fun ConfirmDelete(text: String, dismiss: () -> Unit, confirm: () -> Unit) {
@@ -281,18 +317,18 @@ class MainActivity : ComponentActivity() {
     ScrollPage {
         UpdateControls(updates, open)
         Title("인식 설정")
-        listOf(Triple("ocr", "한국어·영어 OCR", "제품 포장의 글자를 기기에서 읽습니다"), Triple("detection", "제품 영역 자동 검출", "범용 객체 검출 후 직접 영역 수정 가능"), Triple("embedding", "등록 사진 유사도 비교", "MobileNet V3 이미지 특징 사용"), Triple("online", "공개 상품 DB 온라인 조회", "바코드 번호 전송 및 공개 상품 사진 다운로드"), Triple("history", "인식 기록 자동 저장", "인식 결과와 선택 영역 사진을 기기에 저장")).forEach { (key, title, subtitle) ->
+        listOf(Triple("ocr", "한국어·영어 OCR", "제품 포장의 글자를 기기에서 읽습니다"), Triple("detection", "제품 영역 자동 검출", "범용 객체 검출 후 직접 영역 수정 가능"), Triple("embedding", "등록 사진 유사도 비교", "MobileNet V3 이미지 특징 사용"), Triple("online", "공개 상품 DB 온라인 조회", "Open Facts·UPCitemdb 조회 및 공개 상품 사진 다운로드"), Triple("history", "인식 기록 자동 저장", "인식 결과와 선택 영역 사진을 기기에 저장")).forEach { (key, title, subtitle) ->
             var checked by remember(key) { mutableStateOf(vm.enabled(key)) }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.SemiBold); Info(subtitle) }; Switch(checked, { checked = it; vm.setting(key, it) }) }
             HorizontalDivider()
         }
         Title("데이터와 모델")
-        Info("OCR 모델, MobileNet V3 Small, EfficientDet Lite0는 앱에 포함되어 있습니다. 별도 모델 다운로드나 로그인이 필요하지 않습니다. 모델을 제거하려면 앱을 삭제하세요.\n\n공개 상품 조회 캐시: 상품 24시간, 미등록 1시간\n등록 사진 ${vm.catalog.size}개 · 최근 기록 ${vm.history.size}개 표시 (최대 200개)")
+        Info("OCR 모델, MobileNet V3 Small, EfficientDet Lite0는 앱에 포함되어 있습니다. 별도 모델 다운로드나 로그인이 필요하지 않습니다. 모델을 제거하려면 앱을 삭제하세요.\n\n공개 상품 조회 캐시: 상품 24시간, 미등록 1시간\n등록 사진 ${vm.catalog.size}개 · 바코드 상품명 ${vm.barcodeNames.size}개 · 최근 기록 ${vm.history.size}개 표시 (최대 200개)")
         OutlinedButton(onClick = { vm.delete("cache") }) { Text("상품 조회 캐시 비우기") }
         OutlinedButton(onClick = { delete = "catalog" }) { Text("내 상품 카탈로그 전체 삭제") }
         OutlinedButton(onClick = { delete = "history" }) { Text("인식 기록 전체 삭제") }
         Title("개인정보 안내")
-        Info("카메라·갤러리 사진은 업로드하지 않습니다. OCR·객체 검출·사진 특징은 기기에서 처리합니다. 카메라 권한은 촬영에만 사용하며, 갤러리는 시스템 Photo Picker로 선택한 사진만 읽습니다.\n\n자동 업데이트 확인에는 앱 식별 User-Agent와 IP가 GitHub로 전송됩니다. 설정에서 자동 확인을 끌 수 있습니다.\n\n온라인 조회에는 바코드와 앱 식별 User-Agent, IP가 공개 DB로 전송됩니다. 외부 검색을 누르면 수정한 검색어가 해당 검색 서비스로 전달됩니다. ML Kit은 Google SDK이며 진단·사용 통계가 Google에 전송될 수 있습니다. Google의 약관과 개인정보 안내가 적용됩니다.\n\n기록 자동 저장을 꺼도 현재 결과 표시용 사진은 임시 보관되며 다음 앱 시작 시 저장·등록되지 않은 사진을 정리합니다. 앱 데이터의 OS 백업은 비활성화했습니다. 앱 삭제 시 기기의 기록·카탈로그도 삭제됩니다.")
+        Info("카메라·갤러리 사진은 업로드하지 않습니다. OCR·객체 검출·사진 특징은 기기에서 처리합니다. 카메라 권한은 촬영에만 사용하며, 갤러리는 시스템 Photo Picker로 선택한 사진만 읽습니다.\n\n자동 업데이트 확인에는 앱 식별 User-Agent와 IP가 GitHub로 전송됩니다. 설정에서 자동 확인을 끌 수 있습니다.\n\n온라인 조회에는 바코드와 앱 식별 User-Agent, IP가 Open Facts와 UPCitemdb로 전송됩니다. 사진은 업로드하지 않습니다. 외부 검색을 누르면 수정한 검색어가 해당 검색 서비스로 전달됩니다. ML Kit은 Google SDK이며 진단·사용 통계가 Google에 전송될 수 있습니다. Google의 약관과 개인정보 안내가 적용됩니다.\n\n기록 자동 저장을 꺼도 현재 결과 표시용 사진은 임시 보관되며 다음 앱 시작 시 저장·등록되지 않은 사진을 정리합니다. 앱 데이터의 OS 백업은 비활성화했습니다. 앱 삭제 시 기기의 기록·카탈로그도 삭제됩니다.")
         TextButton(onClick = { open("https://developers.google.com/ml-kit/terms") }) { Text("ML Kit 약관·개인정보 안내") }
         TextButton(onClick = { license = true }) { Text("오픈소스·모델 라이선스 및 출처") }
         Info("제품렌즈 ${BuildConfig.VERSION_NAME} · 공개 DB와 등록 사진은 정확한 상품을 보장하지 않습니다. 가격 정보는 제공하지 않습니다.")

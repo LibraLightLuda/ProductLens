@@ -86,6 +86,7 @@ fun CameraScreen(scanOnly: Boolean, onPhoto: (Bitmap, Code?) -> Unit, onError: (
         val py = y.coerceIn(0f, (preview.height - 1).toFloat())
         val sequence = focusSequence.incrementAndGet()
         stable.reset(); hitBox = null; focusing.set(true)
+        blockedUntil.set(android.os.SystemClock.elapsedRealtime() + 150)
         focusPoint = Offset(px / preview.width, py / preview.height); focusConfirmed = false
         guide = scanGuide.centeredAt(focusPoint.x, focusPoint.y)
         message = "초점을 맞추는 중…"
@@ -94,8 +95,8 @@ fun CameraScreen(scanOnly: Boolean, onPhoto: (Bitmap, Code?) -> Unit, onError: (
             .setAutoCancelDuration(3, TimeUnit.SECONDS).build())
         future.addListener({
             if (active.get() && sequence == focusSequence.get()) {
-                focusing.set(false); blockedUntil.set(android.os.SystemClock.elapsedRealtime() + 200)
-                message = try { focusConfirmed = future.get().isFocusSuccessful; if (focusConfirmed) "초점 확인 · 움직이지 않으면 3회 확인 후 인식합니다" else "바코드를 선명하게 맞추고 잠시 멈춰 주세요" }
+                focusing.set(false)
+                message = try { focusConfirmed = future.get().isFocusSuccessful; if (focusConfirmed) "초점 확인 · 바코드가 보이면 자동으로 읽습니다" else "바코드를 프레임에 넣으면 자동으로 읽습니다" }
                     catch (_: Exception) { "바코드를 터치해 초점을 다시 맞추세요" }
             }
         }, main)
@@ -126,19 +127,20 @@ fun CameraScreen(scanOnly: Boolean, onPhoto: (Bitmap, Code?) -> Unit, onError: (
                 analyzer.setAnalyzer(executor) { image ->
                     try {
                         val now = android.os.SystemClock.elapsedRealtime()
-                        if (!delivered.get() && !focusing.get() && now >= blockedUntil.get() && now - last >= 250) {
+                        if (!delivered.get() && now >= blockedUntil.get() && now - last >= 200) {
                             last = now
                             val generation = focusSequence.get()
                             val area = guide
                             val target = focusPoint
                             val hit = BarcodeScan.find(CameraFrames.luminance(image).region(area),
                                 ((target.x - area.left) / area.width).coerceIn(0f, 1f), ((target.y - area.top) / area.height).coerceIn(0f, 1f))
-                            if (generation != focusSequence.get() || focusing.get() || android.os.SystemClock.elapsedRealtime() < blockedUntil.get()) return@setAnalyzer
+                            if (generation != focusSequence.get() || android.os.SystemClock.elapsedRealtime() < blockedUntil.get()) return@setAnalyzer
                             val confirmed = stable.observe(hit, now)
                             val count = stable.count
-                            main.execute { if (active.get() && !focusing.get()) {
+                            val required = stable.required
+                            main.execute { if (active.get()) {
                                 hitBox = hit?.box
-                                message = if (hit != null) "${hit.code.format} · 같은 위치 확인 ${count.coerceAtMost(3)}/3" else "프레임 안의 바코드를 터치해 초점을 맞추세요"
+                                message = if (hit != null) "${hit.code.format} · 확인 ${count.coerceAtMost(required)}/$required" else "가이드에 바코드를 맞추세요 · 필요하면 터치해 초점"
                             } }
                             if (confirmed != null && delivered.compareAndSet(false, true)) {
                                 val bitmap = CameraFrames.photo(image, area)
@@ -191,7 +193,7 @@ fun CameraScreen(scanOnly: Boolean, onPhoto: (Bitmap, Code?) -> Unit, onError: (
                     }
                     override fun onError(exception: ImageCaptureException) { main.execute { if (active.get()) { delivered.set(false); captureBusy = false; currentError("촬영 실패: ${exception.message}") } } }
                 })
-            }, enabled = ready && !captureBusy && !focusing.get(), modifier = Modifier.weight(1f)) { Text(if (captureBusy) "촬영 중" else "사진으로 인식") }
+            }, enabled = ready && !captureBusy, modifier = Modifier.weight(1f)) { Text(if (captureBusy) "촬영 중" else "사진으로 인식") }
         }
     }
 }

@@ -51,11 +51,13 @@ report = dict(version=version, jvm_tests=passed, jvm_skipped=skipped, jvm_failur
 (evidence / 'package-verification.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
 source = dist / f'ProductLens-{version}-source.zip'
 ignored = {'.git', '.gradle', '.kotlin', '.idea', '.venv-test', 'build', 'dist', '__pycache__'}
-files = [p for p in root.rglob('*') if p.is_file() and not any(s in ignored for s in p.relative_to(root).parts) and p.name != 'local.properties']
+files = [p for p in root.rglob('*') if p.is_file() and not any(s in ignored for s in p.relative_to(root).parts) and p.name != 'local.properties'
+         and not (p.parent == evidence and p.name.startswith(('off-', 'upc-')))]
 with zipfile.ZipFile(source, 'w', zipfile.ZIP_DEFLATED) as z:
     for p in files: z.write(p, 'ProductLens/' + p.relative_to(root).as_posix())
 with zipfile.ZipFile(source) as z:
     assert z.testzip() is None
+    assert not any(n.startswith(('ProductLens/evidence/off-', 'ProductLens/evidence/upc-')) for n in z.namelist())
     for needed in ['README.md', 'ARCHITECTURE.md', 'LIBRARIES.md', 'TEST_REPORT.md', 'LIMITATIONS.md', 'gradlew.bat', 'gradle/wrapper/gradle-wrapper.jar']:
         assert 'ProductLens/' + needed in z.namelist()
     for m in models:

@@ -19,7 +19,7 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
     val prefs = app.getSharedPreferences("settings", 0)
     private val store = LensStore(app)
     private val vision = Vision(app)
-    private val source: ProductSource = OpenFactsSource(app, store)
+    private val source = ProductResolver({ code -> withContext(Dispatchers.IO) { store.findBarcode(code) } }, listOf(OpenFactsSource(app, store), UpcItemDbSource(app, store)))
     var page by mutableStateOf("home")
     var busy by mutableStateOf(false); private set
     var status by mutableStateOf(""); private set
@@ -30,6 +30,7 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
     var result by mutableStateOf<ScanResult?>(null); private set
     var history by mutableStateOf<List<ScanResult>>(emptyList()); private set
     var catalog by mutableStateOf<List<CatalogItem>>(emptyList()); private set
+    var barcodeNames by mutableStateOf<List<Product>>(emptyList()); private set
     var query by mutableStateOf("")
     private var photoNotes = emptyList<String>()
     init {
@@ -59,7 +60,7 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
     fun cameraPhoto(bitmap: Bitmap, code: Code? = null, barcodeArea: Boolean = false) = work("촬영 사진을 처리하는 중") {
         if (barcodeArea || code != null) {
             photo = bitmap; regions = emptyList(); region = RectF(0f, 0f, 1f, 1f)
-            photoNotes = if (code != null) listOf("가이드 안의 같은 위치에서 바코드를 연속 3회 확인했습니다.") else emptyList()
+            photoNotes = if (code != null) listOf("가이드 안의 같은 바코드 번호를 여러 프레임에서 확인했습니다.") else emptyList()
         } else prepare(bitmap)
         if (code != null) analyzeInternal(bitmap, code) else page = "crop"
     }
@@ -82,8 +83,7 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
         val candidates = withContext(Dispatchers.IO) { Fusion.rank(store.catalog(), vector, code, text) }
         var product: Product? = null
         val gtin = code?.let(BarcodeRules::lookup)
-        if (gtin != null && enabled("online")) { status = "공개 상품 DB를 조회하는 중"; val lookup = source.lookup(gtin); product = lookup.product; notes += lookup.note }
-        else if (gtin != null) notes += "온라인 조회 꺼짐 · 바코드와 사진 인식은 기기에서 처리했습니다."
+        if (gtin != null) { status = "등록 상품과 공개 DB를 조회하는 중"; val lookup = source.lookup(gtin, enabled("online")); product = lookup.product; notes += lookup.note }
         else if (code != null) notes += "상품 바코드가 아니거나 체크섬이 올바르지 않아 DB 조회하지 않았습니다."
         if (product != null && text.isNotBlank()) {
             if (product.brand.isNotBlank()) notes += if (product.brand.split(',').map(String::trim).filter(String::isNotEmpty).any { text.contains(it, true) }) "DB 브랜드와 OCR 텍스트 교차 일치" else "DB 브랜드를 OCR에서 확인하지 못했습니다. 상품 라벨을 확인하세요."
@@ -100,7 +100,7 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
         val normalized = value.trim().replace(" ", "").replace("-", "")
         if (!BarcodeRules.validGtin(normalized)) { error = "EAN-8/13, UPC-A 또는 GTIN-14의 숫자와 체크섬을 확인하세요. UPC-E는 카메라로 스캔하세요."; return }
         work("바코드로 공개 상품 DB를 조회하는 중") {
-            val lookup = if (enabled("online")) source.lookup(normalized) else Lookup(null, "온라인 조회가 꺼져 있습니다.")
+            val lookup = source.lookup(normalized, enabled("online"))
             val code = Code(normalized, "MANUAL")
             result = ScanResult(code = code, product = lookup.product, candidates = withContext(Dispatchers.IO) { Fusion.rank(store.catalog(), null, code, "") }, messages = listOf(lookup.note))
             query = lookup.product?.let { "${it.brand} ${it.name}" } ?: normalized
@@ -121,7 +121,7 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
     fun retryLookup() = work("공개 상품 DB를 다시 조회하는 중") {
         val r = result ?: return@work
         val code = r.code?.let(BarcodeRules::lookup) ?: return@work
-        val lookup = if (enabled("online")) source.lookup(code) else Lookup(null, "온라인 조회가 꺼져 있습니다.")
+        val lookup = source.lookup(code, enabled("online"), refresh = true)
         result = r.copy(product = lookup.product, messages = r.messages + lookup.note)
         lookup.product?.let { query = "${it.brand} ${it.name}" }
         if (r.id > 0) result = withContext(Dispatchers.IO) { store.save(result!!) }
@@ -137,12 +137,24 @@ class LensViewModel(app: Application) : AndroidViewModel(app) {
         withContext(Dispatchers.IO) { store.register(Product(listOf(name.trim(), model.trim()).filter(String::isNotBlank).joinToString(" "), brand.trim(), r.code?.let(BarcodeRules::lookup).orEmpty(), r.clues.size, image = r.photo, source = "사용자 등록"), vector) }
         refreshInternal(); error = "내 카탈로그에 등록했습니다. 다른 각도의 사진도 같은 이름으로 등록하면 비교에 도움이 됩니다."
     }
+    fun saveBarcodeName(name: String, brand: String, size: String) = work("바코드 상품명을 저장하는 중") {
+        val r = result ?: return@work
+        val code = r.code?.let(BarcodeRules::lookup) ?: return@work
+        require(name.isNotBlank()) { "상품명을 입력하세요." }
+        val p = Product(name.trim(), brand.trim(), code, size.trim(), source = "사용자 등록")
+        withContext(Dispatchers.IO) { store.saveBarcodeName(p) }
+        result = r.copy(product = p, messages = r.messages + "기기에 상품명을 저장했습니다. 다음 스캔부터 오프라인에서도 바코드로 조회합니다.")
+        query = listOf(p.brand, p.name).filter(String::isNotBlank).joinToString(" ")
+        if (r.id > 0) result = withContext(Dispatchers.IO) { store.save(result!!) }
+        refreshInternal()
+    }
+    fun deleteBarcodeName(code: String) = work("바코드 상품명을 삭제하는 중") { withContext(Dispatchers.IO) { store.deleteBarcodeName(code) }; refreshInternal() }
     fun open(record: ScanResult) { result = record; query = record.product?.name ?: record.code?.let(BarcodeRules::lookup) ?: record.clues.query.ifBlank { record.code?.value.orEmpty() }; page = "result" }
     fun delete(table: String, id: Long? = null) = work("기기 데이터를 삭제하는 중") {
-        withContext(Dispatchers.IO) { store.delete(table, id) }; if (table == "history" && (id == null || result?.id == id)) result = null
+        withContext(Dispatchers.IO) { store.delete(table, id); if (table == "catalog" && id == null) store.deleteBarcodeName(null) }; if (table == "history" && (id == null || result?.id == id)) result = null
         refreshInternal()
     }
     fun refresh() = work("기록을 불러오는 중") { refreshInternal() }
-    private suspend fun refreshInternal() { withContext(Dispatchers.IO) { history = store.history(); catalog = store.catalog() } }
+    private suspend fun refreshInternal() { withContext(Dispatchers.IO) { history = store.history(); catalog = store.catalog(); barcodeNames = store.barcodeNames() } }
     override fun onCleared() { vision.close(); store.close() }
 }

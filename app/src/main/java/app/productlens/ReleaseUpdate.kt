@@ -44,7 +44,7 @@ internal fun InputStream.readLimited(limit: Int): ByteArray {
     while (true) {
         val count = read(buffer)
         if (count < 0) return result.toByteArray()
-        if (result.size() + count > limit) throw UpdateException("릴리스 정보가 허용 크기를 초과했습니다.")
+        if (result.size() + count > limit) throw UpdateException("응답이 허용 크기를 초과했습니다.")
         result.write(buffer, 0, count)
     }
 }
